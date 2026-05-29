@@ -1,0 +1,13 @@
+# Conda environment for the LLM-unlearning privacy experiments.
+# Create with:  conda env create -f environment.yml
+# PyTorch is installed via pip with an explicit CUDA build (see README).
+name: unlearn
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip>=24.0
+  - pip:
+      - -r requirements.txt
+      # Install torch separately with the right CUDA build, e.g.:
+      #   pip install torch --index-url https://download.pytorch.org/whl/cu124

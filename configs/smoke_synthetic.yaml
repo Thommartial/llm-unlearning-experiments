@@ -1,0 +1,24 @@
+# Fully offline smoke test: a tiny untrained GPT-2 on synthetic token sequences.
+# Runs in seconds on CPU; used by CI and `make smoke`.
+name: smoke_synthetic
+seed: 42
+output_dir: results
+device: cpu
+model:
+  name: tiny
+data:
+  dataset: synthetic
+  n_synthetic: 160
+  seq_len: 24
+  vocab_size: 128
+  forget_fraction: 0.25
+  holdout_fraction: 0.25
+  outlier_fraction: 0.3
+unlearn:
+  method: gradient_ascent
+  finetune_epochs: 2
+  epochs: 2
+  learning_rate: 5.0e-4
+  batch_size: 8
+attack:
+  method: loss_threshold

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-test-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install (CPU PyTorch + runtime deps + package)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install transformers scikit-learn matplotlib numpy pyyaml
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src scripts tests
+
+      - name: Unit tests
+        run: pytest -q
+
+      - name: End-to-end offline smoke (tiny model + synthetic data)
+        run: python scripts/run_experiment.py --config configs/smoke_synthetic.yaml --run
+
+      - name: Render figures
+        run: python -m unlearning.plotting --results results

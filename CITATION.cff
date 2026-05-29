@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the accompanying paper."
+title: "LLM Unlearning Privacy Experiments"
+abstract: "Reproducible experiments measuring residual privacy leakage after machine unlearning in large language models."
+type: software
+authors:
+  - family-names: Epalle
+    given-names: Thomas Martial E.
+  - family-names: Lanre
+    given-names: Matthias Atoye
+  - family-names: Matunin
+    given-names: Latala
+  - family-names: Promise
+    given-names: Egwuonwu
+license: MIT
+version: 0.1.0
+date-released: 2026-05-29
+repository-code: "https://github.com/Thommartial/llm-unlearning-experiments"
+references:
+  - type: article
+    title: "Privacy Attacks on Machine Unlearning in Large Language Models: Attacks, Defences, and Verification Challenges"
+    authors:
+      - family-names: Epalle
+        given-names: Thomas Martial E.
+      - family-names: Lanre
+        given-names: Matthias Atoye
+      - family-names: Matunin
+        given-names: Latala
+      - family-names: Promise
+        given-names: Egwuonwu
+    year: 2026

@@ -1,0 +1,22 @@
+# Real local run for the GTX 1050 (4 GB): GPT-2 (124M) on a small TOFU subset.
+name: smoke_gpt2
+seed: 42
+output_dir: results
+device: auto
+model:
+  name: gpt2
+  dtype: float32
+data:
+  dataset: tofu
+  forget_fraction: 0.1
+  holdout_fraction: 0.2
+  max_samples: 400        # keep it small so it finishes in minutes on a 1050
+  max_length: 128
+unlearn:
+  method: gradient_ascent
+  finetune_epochs: 1
+  epochs: 2
+  learning_rate: 1.0e-5
+  batch_size: 2
+attack:
+  method: loss_threshold

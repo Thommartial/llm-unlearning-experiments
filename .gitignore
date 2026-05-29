@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Experiment artifacts (kept out of version control; reproduced from configs)
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
+models/
+checkpoints/
+*.ckpt
+*.safetensors
+*.bin
+wandb/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Internal
+.sync_probe

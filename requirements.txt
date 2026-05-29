@@ -1,0 +1,18 @@
+# Runtime dependencies (pin majors; exact versions captured in environment.yml).
+#
+# NOTE: PyTorch is installed SEPARATELY so the correct CUDA build is chosen for
+# your hardware. Do NOT add torch here. See README "Installation".
+#   GPU (CUDA): pip install torch --index-url https://download.pytorch.org/whl/cu124
+#   CPU only:   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+transformers>=4.44
+datasets>=2.20
+accelerate>=0.33
+peft>=0.12
+trl>=0.9
+scikit-learn>=1.4
+matplotlib>=3.8
+pandas>=2.2
+numpy>=1.26
+pyyaml>=6.0
+tqdm>=4.66

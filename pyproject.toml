@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unlearning"
+version = "0.1.0"
+description = "Reproducible privacy experiments for machine unlearning in LLMs (CIS*6590)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Thomas Martial E. Epalle" },
+  { name = "Matthias Atoye Lanre" },
+  { name = "Latala Matunin" },
+  { name = "Egwuonwu Promise" },
+]
+keywords = ["machine unlearning", "LLM", "privacy", "membership inference"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+run-experiment = "unlearning.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
