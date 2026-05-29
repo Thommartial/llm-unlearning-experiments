@@ -70,10 +70,11 @@ def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str):
 
 
 def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
-    """Dispatch to the configured unlearning method."""
+    """Dispatch to the configured unlearning method (utility-anchored)."""
     method = cfg.unlearn.method
     model.to(device).train()
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.unlearn.learning_rate)
+
     ref = None
     if method == "npo":
         ref = copy.deepcopy(model).to(device).eval()
@@ -81,36 +82,43 @@ def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
             p.requires_grad_(False)
 
     retain_iter = iter(_loader(splits.retain, cfg))
+
+    def next_retain():
+        nonlocal retain_iter
+        try:
+            return next(retain_iter)
+        except StopIteration:
+            retain_iter = iter(_loader(splits.retain, cfg))
+            return next(retain_iter)
+
+    def lm_loss(batch):
+        return model(input_ids=batch["input_ids"].to(device),
+                     attention_mask=batch["attention_mask"].to(device),
+                     labels=batch["labels"].to(device)).loss
+
     for _ in range(cfg.unlearn.epochs):
         for batch in _loader(splits.forget, cfg):
             opt.zero_grad()
-            ids = batch["input_ids"].to(device)
-            am = batch["attention_mask"].to(device)
-            forget_loss = model(input_ids=ids, attention_mask=am, labels=ids).loss
+            forget_loss = lm_loss(batch)
 
             if method == "gradient_ascent":
                 loss = -forget_loss
             elif method == "gradient_difference":
-                try:
-                    rb = next(retain_iter)
-                except StopIteration:
-                    retain_iter = iter(_loader(splits.retain, cfg))
-                    rb = next(retain_iter)
-                retain_loss = model(input_ids=rb["input_ids"].to(device),
-                                    attention_mask=rb["attention_mask"].to(device),
-                                    labels=rb["labels"].to(device)).loss
-                loss = -forget_loss + cfg.unlearn.retain_weight * retain_loss
+                loss = -forget_loss + cfg.unlearn.retain_weight * lm_loss(next_retain())
             elif method == "npo":
                 beta = cfg.unlearn.beta
                 lp_theta = attacks.sequence_avg_logprob(model, batch, device)
                 with torch.no_grad():
                     lp_ref = attacks.sequence_avg_logprob(ref, batch, device)
-                loss = (2.0 / beta) * torch.nn.functional.softplus(
+                npo = (2.0 / beta) * torch.nn.functional.softplus(
                     beta * (lp_theta - lp_ref)
                 ).mean()
+                loss = npo + cfg.unlearn.retain_weight * lm_loss(next_retain())
             else:
                 raise ValueError(f"Unknown unlearning method '{method}'.")
 
+            if not torch.isfinite(loss):
+                continue  # skip pathological steps instead of corrupting the model
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()

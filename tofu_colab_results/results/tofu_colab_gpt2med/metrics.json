@@ -1,0 +1,25 @@
+{
+  "experiment": "tofu_colab_gpt2med",
+  "method": "npo",
+  "attack": "min_k_prob",
+  "pre_unlearning": {
+    "mia_auc": 0.9121015625000001,
+    "mia_advantage": 0.4121015625000001,
+    "mia_auc_outlier": 0.9808463541666667,
+    "mia_advantage_outlier": 0.48084635416666666,
+    "mia_auc_typical": 0.8826395089285716,
+    "mia_advantage_typical": 0.38263950892857157
+  },
+  "post_unlearning": {
+    "mia_auc": 0.47504296874999996,
+    "mia_advantage": 0.02495703125000004,
+    "mia_auc_outlier": 0.6540885416666667,
+    "mia_advantage_outlier": 0.15408854166666675,
+    "mia_auc_typical": 0.3983091517857143,
+    "mia_advantage_typical": 0.1016908482142857
+  },
+  "forget_loss_pre": 0.9742675498127937,
+  "retain_loss_pre": 0.9513832946618398,
+  "forget_loss_post": 110.11178464889527,
+  "retain_loss_post": 109.93801577885945
+}

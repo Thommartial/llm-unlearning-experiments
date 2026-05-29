@@ -1,0 +1,25 @@
+# Offline NPO stability check: confirms retain loss stays sane after unlearning.
+name: smoke_synthetic_npo
+seed: 42
+output_dir: results
+device: cpu
+model:
+  name: tiny
+data:
+  dataset: synthetic
+  n_synthetic: 160
+  seq_len: 24
+  vocab_size: 128
+  forget_fraction: 0.25
+  holdout_fraction: 0.25
+  outlier_fraction: 0.3
+unlearn:
+  method: npo
+  finetune_epochs: 3
+  epochs: 2
+  learning_rate: 5.0e-4
+  beta: 0.1
+  retain_weight: 1.0
+  batch_size: 8
+attack:
+  method: loss_threshold
