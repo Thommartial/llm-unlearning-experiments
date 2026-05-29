@@ -52,6 +52,14 @@ def run(cfg: ExperimentConfig, execute: bool) -> None:
     print(f"[run] post-unlearning MIA AUC = {metrics['post_unlearning']['mia_auc']:.3f}")
     print(f"[run] metrics -> {out / 'metrics.json'}")
 
+    try:  # figure generation is non-critical; never fail the run over a plot
+        from .plotting import render
+
+        render(out)
+        print(f"[run] figure  -> {out / 'figure_mia.png'}")
+    except Exception as exc:
+        print(f"[run] figure skipped ({exc})")
+
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="LLM unlearning privacy experiments")
