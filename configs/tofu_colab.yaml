@@ -15,9 +15,10 @@ data:
   max_length: 128
 unlearn:
   method: npo            # stable; avoids the divergence risk of raw gradient ascent
-  finetune_epochs: 2
+  finetune_epochs: 4
   epochs: 2
   learning_rate: 1.0e-5
+  finetune_lr: 2.0e-5
   batch_size: 4
   beta: 0.1
 attack:

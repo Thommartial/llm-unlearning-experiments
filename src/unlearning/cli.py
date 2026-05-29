@@ -43,13 +43,19 @@ def run(cfg: ExperimentConfig, execute: bool) -> None:
 
     model = unlearn.finetune_base(cfg, splits, device)
     pre = attacks.run_attack(model, splits, cfg, device)
-    print(f"[run] pre-unlearning MIA AUC = {evaluate.mia_metrics(pre)['mia_auc']:.3f}")
+    pre_losses = {
+        "forget": evaluate.mean_loss(model, splits.forget, cfg, device),
+        "retain": evaluate.mean_loss(model, splits.retain, cfg, device),
+    }
+    print(f"[run] pre-unlearning  MIA AUC = {evaluate.mia_metrics(pre)['mia_auc']:.3f}  "
+          f"(forget loss {pre_losses['forget']:.2f}, retain loss {pre_losses['retain']:.2f})")
 
     model = unlearn.apply_unlearning(model, splits, cfg, device)
     post = attacks.run_attack(model, splits, cfg, device)
 
-    metrics = evaluate.summarise(cfg, model, splits, pre, post, device, out)
-    print(f"[run] post-unlearning MIA AUC = {metrics['post_unlearning']['mia_auc']:.3f}")
+    metrics = evaluate.summarise(cfg, model, splits, pre, post, pre_losses, device, out)
+    print(f"[run] post-unlearning MIA AUC = {metrics['post_unlearning']['mia_auc']:.3f}  "
+          f"(forget loss {metrics['forget_loss_post']:.2f}, retain loss {metrics['retain_loss_post']:.2f})")
     print(f"[run] metrics -> {out / 'metrics.json'}")
 
     try:  # figure generation is non-critical; never fail the run over a plot

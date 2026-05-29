@@ -45,10 +45,10 @@ def _loader(dataset, cfg: ExperimentConfig, shuffle: bool = True) -> DataLoader:
                       shuffle=shuffle, collate_fn=collate)
 
 
-def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int) -> None:
+def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr: float) -> None:
     """Standard causal-LM fine-tuning loop."""
     model.to(device).train()
-    opt = torch.optim.AdamW(model.parameters(), lr=cfg.unlearn.learning_rate)
+    opt = torch.optim.AdamW(model.parameters(), lr=lr)
     for _ in range(epochs):
         for batch in _loader(dataset, cfg):
             opt.zero_grad()
@@ -56,6 +56,7 @@ def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int) ->
                         attention_mask=batch["attention_mask"].to(device),
                         labels=batch["labels"].to(device))
             out.loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
 
 
@@ -63,7 +64,8 @@ def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str):
     """Fine-tune the base model on all members (forget + retain)."""
     model, _ = build_model_and_tokenizer(cfg)
     members = ConcatDataset([splits.forget, splits.retain])
-    train_lm(model, members, cfg, device, cfg.unlearn.finetune_epochs)
+    lr = cfg.unlearn.finetune_lr or cfg.unlearn.learning_rate
+    train_lm(model, members, cfg, device, cfg.unlearn.finetune_epochs, lr)
     return model
 
 
@@ -110,5 +112,6 @@ def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
                 raise ValueError(f"Unknown unlearning method '{method}'.")
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
     return model

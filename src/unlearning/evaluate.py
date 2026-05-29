@@ -1,4 +1,4 @@
-"""Metrics: MIA AUC (overall + minority slice) and forget/retain quality."""
+"""Metrics: MIA AUC (overall + minority slice) and forget/retain utility."""
 
 from __future__ import annotations
 
@@ -6,12 +6,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-import torch
 from sklearn.metrics import roc_auc_score
-from torch.utils.data import DataLoader
-
-from .config import ExperimentConfig
-from .data import Splits, collate
 
 
 def _auc(member: np.ndarray, nonmember: np.ndarray) -> float:
@@ -23,15 +18,21 @@ def _auc(member: np.ndarray, nonmember: np.ndarray) -> float:
     return float(roc_auc_score(y, s))
 
 
-@torch.no_grad()
-def _mean_loss(model, dataset, cfg: ExperimentConfig, device: str) -> float:
+def mean_loss(model, dataset, cfg, device: str) -> float:
+    """Average cross-entropy loss over a dataset (utility / forget quality)."""
+    import torch
+    from torch.utils.data import DataLoader
+
+    from .data import collate
+
     model.eval()
     losses = []
-    for batch in DataLoader(dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate):
-        out = model(input_ids=batch["input_ids"].to(device),
-                    attention_mask=batch["attention_mask"].to(device),
-                    labels=batch["labels"].to(device))
-        losses.append(float(out.loss))
+    with torch.no_grad():
+        for batch in DataLoader(dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate):
+            out = model(input_ids=batch["input_ids"].to(device),
+                        attention_mask=batch["attention_mask"].to(device),
+                        labels=batch["labels"].to(device))
+            losses.append(float(out.loss))
     return float(np.mean(losses)) if losses else float("nan")
 
 
@@ -54,17 +55,18 @@ def mia_metrics(scores: dict) -> dict:
     return metrics
 
 
-def summarise(cfg, model, splits: Splits, pre_scores: dict, post_scores: dict,
-              device: str, out_dir: Path) -> dict:
-    """Assemble metrics, persist them, and return the dict."""
+def summarise(cfg, model, splits, pre_scores, post_scores, pre_losses, device, out_dir: Path) -> dict:
+    """Assemble metrics (MIA + utility trade-off), persist them, and return them."""
     metrics = {
         "experiment": cfg.name,
         "method": cfg.unlearn.method,
         "attack": cfg.attack.method,
         "pre_unlearning": mia_metrics(pre_scores),
         "post_unlearning": mia_metrics(post_scores),
-        "forget_loss_post": _mean_loss(model, splits.forget, cfg, device),
-        "retain_loss_post": _mean_loss(model, splits.retain, cfg, device),
+        "forget_loss_pre": pre_losses["forget"],
+        "retain_loss_pre": pre_losses["retain"],
+        "forget_loss_post": mean_loss(model, splits.forget, cfg, device),
+        "retain_loss_post": mean_loss(model, splits.retain, cfg, device),
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))

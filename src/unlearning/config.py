@@ -34,7 +34,8 @@ class UnlearnConfig:
     method: str = "gradient_ascent"  # gradient_ascent | gradient_difference | npo
     epochs: int = 3
     finetune_epochs: int = 1
-    learning_rate: float = 1.0e-5
+    learning_rate: float = 1.0e-5      # used for unlearning
+    finetune_lr: float | None = None    # base fine-tuning; defaults to learning_rate
     batch_size: int = 4
     retain_weight: float = 1.0       # gradient_difference
     beta: float = 0.1                # npo
