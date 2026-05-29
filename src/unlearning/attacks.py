@@ -61,3 +61,30 @@ def run_attack(model, splits: Splits, cfg: ExperimentConfig, device: str) -> dic
         "holdout": score_dataset(model, splits.holdout, cfg, device),
         "forget_is_outlier": list(splits.forget_is_outlier),
     }
+
+
+@torch.no_grad()
+def memorisation_scores(model, dataset, cfg: ExperimentConfig, device: str) -> torch.Tensor:
+    """Per-record memorisation (mean log-prob); higher = more memorised."""
+    model.eval()
+    loader = torch.utils.data.DataLoader(
+        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate
+    )
+    out = [sequence_avg_logprob(model, batch, device) for batch in loader]
+    return torch.cat(out).cpu()
+
+
+def tag_outliers(model, splits: Splits, cfg: ExperimentConfig, device: str) -> None:
+    """Flag the most-memorised forget records as the high-risk minority.
+
+    Outliers are defined on the fine-tuned (pre-unlearning) model as the
+    top `outlier_fraction` of forget records by memorisation; detectability is
+    later evaluated on the post-unlearning model, so the tagging is not
+    circular with the attack it informs.
+    """
+    if cfg.data.outlier_fraction <= 0 or len(splits.forget) == 0:
+        return
+    scores = memorisation_scores(model, splits.forget, cfg, device)
+    n_out = max(1, int(cfg.data.outlier_fraction * len(scores)))
+    top = set(torch.topk(scores, n_out, largest=True).indices.tolist())
+    splits.forget_is_outlier = [i in top for i in range(len(scores))]

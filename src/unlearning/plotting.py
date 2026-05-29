@@ -33,9 +33,9 @@ def render(run_dir: Path) -> Path:
     ax1.legend()
 
     post = metrics["post_unlearning"]
-    keys = [k for k in ("mia_auc", "mia_auc_typical", "mia_auc_outlier") if k in post]
-    ax2.bar([k.replace("mia_auc", "all").replace("_", " ") for k in keys],
-            [post[k] for k in keys])
+    labels = {"mia_auc": "all", "mia_auc_typical": "typical", "mia_auc_outlier": "outlier"}
+    keys = [k for k in labels if k in post]
+    ax2.bar([labels[k] for k in keys], [post[k] for k in keys])
     ax2.axhline(0.5, color="k", ls="--", lw=0.8)
     ax2.set(ylim=(0, 1), ylabel="AUC", title="Post-unlearning MIA AUC")
 

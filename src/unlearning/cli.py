@@ -42,6 +42,8 @@ def run(cfg: ExperimentConfig, execute: bool) -> None:
           f"holdout={len(splits.holdout)}")
 
     model = unlearn.finetune_base(cfg, splits, device)
+    if not any(splits.forget_is_outlier):  # e.g. TOFU: tag by memorisation
+        attacks.tag_outliers(model, splits, cfg, device)
     pre = attacks.run_attack(model, splits, cfg, device)
     pre_losses = {
         "forget": evaluate.mean_loss(model, splits.forget, cfg, device),
