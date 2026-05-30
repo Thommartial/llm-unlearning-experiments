@@ -59,3 +59,41 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def render_sweep(out_dir, attack: str = "min_k_prob"):
+    """Grouped bar of post-unlearning MIA advantage (typical vs outlier) per model."""
+    import csv as _csv
+    from collections import defaultdict
+
+    rows = defaultdict(lambda: {"typical": [], "outlier": []})
+    with open(Path(out_dir) / "sweep_raw.csv", newline="") as f:
+        for r in _csv.DictReader(f):
+            if r["attack"] != attack:
+                continue
+            if r.get("adv_post_typical") not in (None, "", "None"):
+                rows[r["model"]]["typical"].append(float(r["adv_post_typical"]))
+            if r.get("adv_post_outlier") not in (None, "", "None"):
+                rows[r["model"]]["outlier"].append(float(r["adv_post_outlier"]))
+
+    models = list(rows)
+    x = np.arange(len(models))
+    width = 0.38
+    typ_m = [float(np.mean(rows[m]["typical"])) for m in models]
+    typ_s = [float(np.std(rows[m]["typical"])) for m in models]
+    out_m = [float(np.mean(rows[m]["outlier"])) for m in models]
+    out_s = [float(np.std(rows[m]["outlier"])) for m in models]
+
+    fig, ax = plt.subplots(figsize=(7, 3.6))
+    ax.bar(x - width / 2, typ_m, width, yerr=typ_s, capsize=3, label="typical")
+    ax.bar(x + width / 2, out_m, width, yerr=out_s, capsize=3, label="outlier")
+    ax.set_xticks(x)
+    ax.set_xticklabels(models, rotation=15, ha="right")
+    ax.set_ylabel("post-unlearning MIA advantage")
+    ax.set_title(f"Residual leakage by model ({attack}); mean $\\pm$ std over seeds")
+    ax.legend()
+    fig.tight_layout()
+    out = Path(out_dir) / "figure_sweep.pdf"
+    fig.savefig(out)
+    fig.savefig(Path(out_dir) / "figure_sweep.png", dpi=150)
+    return out

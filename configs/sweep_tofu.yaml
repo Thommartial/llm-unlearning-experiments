@@ -1,0 +1,28 @@
+# Base config for the multi-model/multi-seed sweep on TOFU (free-Colab T4).
+# `model.name` and `seed` are overridden per run by unlearning.sweep --models/--seeds.
+name: sweep_base
+seed: 0
+output_dir: results
+device: auto
+model:
+  name: gpt2
+  dtype: float32
+data:
+  dataset: tofu
+  forget_fraction: 0.1
+  holdout_fraction: 0.2
+  max_samples: null
+  max_length: 128
+  outlier_fraction: 0.3
+unlearn:
+  method: npo
+  finetune_epochs: 3
+  epochs: 2
+  learning_rate: 1.0e-5
+  finetune_lr: 2.0e-5
+  batch_size: 4
+  beta: 0.1
+  retain_weight: 1.0
+attack:
+  method: min_k_prob
+  min_k: 0.2

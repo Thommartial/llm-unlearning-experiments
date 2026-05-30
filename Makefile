@@ -28,6 +28,9 @@ smoke-local:  ## Real local run (GPT-2 + TOFU subset; GTX-1050-friendly)
 experiment:  ## Full run (Llama-3.2-1B + TOFU; intended for a cloud T4)
 > python scripts/run_experiment.py --config configs/tofu_llama1b.yaml --run
 
+sweep:  ## Multi-model/multi-seed sweep, two attacks (Colab/T4)
+> python -m unlearning.sweep --config configs/sweep_tofu.yaml --models gpt2 gpt2-medium EleutherAI/pythia-410m --seeds 0 1 2 --out results/sweep
+
 figures:  ## Regenerate figures from results
 > python -m unlearning.plotting --results results
 
@@ -40,4 +43,4 @@ test:  ## Unit tests
 clean:  ## Remove caches and generated artifacts
 > rm -rf .pytest_cache .ruff_cache **/__pycache__ results/* && touch results/.gitkeep
 
-.PHONY: help env torch-gpu install verify smoke smoke-local experiment figures lint test clean
+.PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures lint test clean
