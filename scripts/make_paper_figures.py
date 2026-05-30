@@ -50,8 +50,8 @@ def equity_figure(df: pd.DataFrame, attack: str, out: Path) -> None:
     ax.legend(title="subgroup", frameon=False)
     sns.despine()
     plt.tight_layout()
-    plt.savefig(out)
-    plt.savefig(out.with_suffix(".png"), dpi=300)
+    plt.savefig(out, bbox_inches="tight")
+    plt.savefig(out.with_suffix(".png"), dpi=300, bbox_inches="tight")
     plt.close()
 
 
@@ -76,8 +76,8 @@ def scaling_figure(df: pd.DataFrame, out: Path) -> None:
     ax.legend(title="", frameon=False)
     sns.despine()
     plt.tight_layout()
-    plt.savefig(out)
-    plt.savefig(out.with_suffix(".png"), dpi=300)
+    plt.savefig(out, bbox_inches="tight")
+    plt.savefig(out.with_suffix(".png"), dpi=300, bbox_inches="tight")
     plt.close()
 
 
