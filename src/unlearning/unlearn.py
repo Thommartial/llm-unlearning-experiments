@@ -55,6 +55,8 @@ def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr
             out = model(input_ids=batch["input_ids"].to(device),
                         attention_mask=batch["attention_mask"].to(device),
                         labels=batch["labels"].to(device))
+            if not torch.isfinite(out.loss):
+                continue
             out.loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()

@@ -12,6 +12,7 @@ peft>=0.12
 trl>=0.9
 scikit-learn>=1.4
 matplotlib>=3.8
+seaborn>=0.13
 pandas>=2.2
 numpy>=1.26
 pyyaml>=6.0

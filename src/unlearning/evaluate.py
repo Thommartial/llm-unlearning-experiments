@@ -10,7 +10,11 @@ from sklearn.metrics import roc_auc_score
 
 
 def _auc(member: np.ndarray, nonmember: np.ndarray) -> float:
-    """AUC of a membership score (member=1, non-member=0)."""
+    """AUC of a membership score (member=1, non-member=0); NaN-safe."""
+    member = np.asarray(member, dtype=float)
+    nonmember = np.asarray(nonmember, dtype=float)
+    member = member[np.isfinite(member)]
+    nonmember = nonmember[np.isfinite(nonmember)]
     if len(member) == 0 or len(nonmember) == 0:
         return float("nan")
     y = np.concatenate([np.ones(len(member)), np.zeros(len(nonmember))])

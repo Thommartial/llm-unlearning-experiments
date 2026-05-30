@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import statistics
 from collections import defaultdict
 from dataclasses import replace
@@ -105,7 +106,7 @@ def aggregate(rows: list[dict]) -> list[dict]:
     for (model, attack), rs in sorted(groups.items()):
         entry = {"model": model, "attack": attack, "n_seeds": len(rs)}
         for k in metrics:
-            vals = [r[k] for r in rs if r.get(k) is not None]
+            vals = [r[k] for r in rs if r.get(k) is not None and math.isfinite(r[k])]
             if vals:
                 entry[f"{k}_mean"] = round(statistics.mean(vals), 4)
                 entry[f"{k}_std"] = round(statistics.pstdev(vals), 4) if len(vals) > 1 else 0.0

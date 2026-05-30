@@ -29,7 +29,7 @@ experiment:  ## Full run (Llama-3.2-1B + TOFU; intended for a cloud T4)
 > python scripts/run_experiment.py --config configs/tofu_llama1b.yaml --run
 
 sweep:  ## Multi-model/multi-seed sweep, two attacks (Colab/T4)
-> python -m unlearning.sweep --config configs/sweep_tofu.yaml --models gpt2 gpt2-medium EleutherAI/pythia-410m --seeds 0 1 2 --out results/sweep
+> python -m unlearning.sweep --config configs/sweep_tofu.yaml --models distilgpt2 gpt2 gpt2-medium --seeds 0 1 2 --out results/sweep
 
 figures:  ## Regenerate figures from results
 > python -m unlearning.plotting --results results
