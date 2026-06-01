@@ -25,8 +25,8 @@ smoke:  ## Offline end-to-end run (tiny model + synthetic data; runs anywhere)
 smoke-local:  ## Real local run (GPT-2 + TOFU subset; GTX-1050-friendly)
 > python scripts/run_experiment.py --config configs/smoke_gpt2.yaml --run
 
-experiment:  ## Full run (Llama-3.2-1B + TOFU; intended for a cloud T4)
-> python scripts/run_experiment.py --config configs/tofu_llama1b.yaml --run
+experiment:  ## One full run (GPT-2-medium + TOFU; a cloud T4)
+> python scripts/run_experiment.py --config configs/tofu_colab.yaml --run
 
 sweep:  ## Multi-model/multi-seed sweep, two attacks (Colab/T4)
 > python -m unlearning.sweep --config configs/sweep_tofu.yaml --models distilgpt2 gpt2 gpt2-medium --seeds 0 1 2 --out results/sweep

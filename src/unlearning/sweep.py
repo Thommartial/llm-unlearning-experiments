@@ -3,7 +3,7 @@
 For each (model, seed) we fine-tune once, tag outliers, unlearn once, and then
 score the pre- and post-unlearning models with BOTH attacks (no retraining per
 attack). Results are appended to a CSV incrementally and the run is
-resumable---safe for free Colab sessions that may disconnect.
+resumable, so it is safe for free Colab sessions that may disconnect.
 
 Top-level imports are kept free of heavy deps so the aggregation logic can be
 unit-tested without PyTorch; model/training imports are loaded lazily.
