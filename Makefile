@@ -34,6 +34,9 @@ sweep:  ## Multi-model/multi-seed sweep, two attacks (Colab/T4)
 figures:  ## Regenerate figures from results
 > python -m unlearning.plotting --results results
 
+fed-figures:  ## Federated paper figures from results/fed_sweep.csv
+> python scripts/make_fed_figures.py --csv results/fed_sweep.csv --out figures
+
 lint:  ## Lint
 > ruff check src scripts tests
 
@@ -43,4 +46,4 @@ test:  ## Unit tests
 clean:  ## Remove caches and generated artifacts
 > rm -rf .pytest_cache .ruff_cache **/__pycache__ results/* && touch results/.gitkeep
 
-.PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures lint test clean
+.PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures fed-figures lint test clean

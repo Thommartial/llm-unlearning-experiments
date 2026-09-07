@@ -82,6 +82,10 @@ which sweeps models and seeds and is resumable across sessions. GPT-2-medium
 needs the 16 GB card; a 4 GB GTX 1050 handles the smoke test, DistilGPT-2, and
 GPT-2.
 
+Rebuild the federated paper figures (scaling, equity, and update-signal) from
+the sweep CSV with `make fed-figures` (or `python scripts/make_fed_figures.py
+--csv results/fed_sweep.csv --out figures`). It runs on CPU in seconds.
+
 ## Notes
 
 - Runs are config-driven; the resolved config is saved next to the results, and
