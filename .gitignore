@@ -19,6 +19,7 @@ data/*
 !data/.gitkeep
 results/*
 !results/.gitkeep
+!results/fed_sweep.csv
 models/
 checkpoints/
 *.ckpt
