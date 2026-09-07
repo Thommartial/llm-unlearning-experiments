@@ -65,16 +65,21 @@ def fedavg_train(cfg: ExperimentConfig, clients: list, device: str,
     lr = cfg.unlearn.finetune_lr or cfg.unlearn.learning_rate
     active = [(c, len(c)) for c in clients if len(c) > 0]
 
+    dtypes = {k: v.dtype for k, v in global_model.state_dict().items()}
     for _ in range(rounds):
         g_state = {k: v.detach().clone() for k, v in global_model.state_dict().items()}
-        local_states, weights = [], []
+        acc, total = None, 0.0  # incremental weighted sum on CPU (memory-safe for large models)
         for dataset, size in active:
             worker.load_state_dict(g_state)
             unlearn.train_lm(worker, dataset, cfg, device, local_epochs, lr)
-            local_states.append({k: v.detach().cpu().clone()
-                                 for k, v in worker.state_dict().items()})
-            weights.append(size)
-        global_model.load_state_dict(_weighted_average(local_states, weights))
+            total += size
+            w_state = worker.state_dict()
+            if acc is None:
+                acc = {k: v.detach().float().cpu() * size for k, v in w_state.items()}
+            else:
+                for k, v in w_state.items():
+                    acc[k] += v.detach().float().cpu() * size
+        global_model.load_state_dict({k: (v / total).to(dtypes[k]) for k, v in acc.items()})
 
     del worker
     if device == "cuda":
