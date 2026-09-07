@@ -1,0 +1,30 @@
+# Federated TOFU experiment for a 16 GB cloud GPU (Kaggle T4/P100).
+# Client 0 holds the forget set; four clients shard the retain set.
+# For DistilGPT-2 set model.name: distilgpt2; GPT-2-medium needs the 16 GB card.
+name: fed_tofu_gpt2
+seed: 42
+device: auto
+model:
+  name: gpt2
+data:
+  dataset: tofu
+  forget_fraction: 0.1
+  holdout_fraction: 0.2
+  max_length: 128
+unlearn:
+  method: npo
+  epochs: 2
+  finetune_epochs: 1
+  batch_size: 4
+  learning_rate: 1.0e-5
+  finetune_lr: 5.0e-5
+  beta: 0.1
+  retain_weight: 1.0
+attack:
+  method: min_k_prob
+  min_k: 0.2
+federated:
+  num_clients: 5
+  rounds: 15
+  local_epochs: 1
+  unlearn_method: approx

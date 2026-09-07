@@ -46,7 +46,7 @@ def equity_figure(df: pd.DataFrame, attack: str, out: Path) -> None:
         errorbar="sd", capsize=0.08, err_kws={"linewidth": 1.2}, palette="muted",
     )
     ax.set_xlabel(r"model (increasing size $\rightarrow$)")
-    ax.set_ylabel(r"post-unlearning MIA advantage $|\mathrm{AUC}-0.5|$")
+    ax.set_ylabel(r"post-unlearning MIA advantage $|\mathrm{AUC}-0.5|$", fontsize=9)
     ax.legend(title="subgroup", frameon=False)
     sns.despine()
     plt.tight_layout()

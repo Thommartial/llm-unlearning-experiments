@@ -48,6 +48,18 @@ class AttackConfig:
 
 
 @dataclass
+class FederatedConfig:
+    """Federated fine-tuning and federated unlearning knobs.
+
+    Client 0 holds the forget set; the remaining clients shard the retain set.
+    """
+    num_clients: int = 5
+    rounds: int = 15                 # FedAvg aggregation rounds
+    local_epochs: int = 1            # local epochs per client per round
+    unlearn_method: str = "approx"   # approx (server-side, reuse unlearn.method) | retrain (FedAvg over retain clients)
+
+
+@dataclass
 class ExperimentConfig:
     name: str
     seed: int = 42
@@ -57,6 +69,7 @@ class ExperimentConfig:
     data: DataConfig = field(default_factory=DataConfig)
     unlearn: UnlearnConfig = field(default_factory=UnlearnConfig)
     attack: AttackConfig = field(default_factory=AttackConfig)
+    federated: FederatedConfig = field(default_factory=FederatedConfig)
 
 
 def load_config(path: str | Path) -> ExperimentConfig:
@@ -71,4 +84,5 @@ def load_config(path: str | Path) -> ExperimentConfig:
         data=DataConfig(**raw.get("data", {})),
         unlearn=UnlearnConfig(**raw.get("unlearn", {})),
         attack=AttackConfig(**raw.get("attack", {})),
+        federated=FederatedConfig(**raw.get("federated", {})),
     )

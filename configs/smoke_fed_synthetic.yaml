@@ -1,0 +1,31 @@
+# Offline federated smoke test: tiny untrained model + synthetic data.
+# Runs end-to-end in seconds on CPU, no downloads. Validate the federated
+# pipeline with this before spending GPU time on TOFU.
+name: smoke_fed_synthetic
+seed: 0
+device: cpu
+model:
+  name: tiny
+data:
+  dataset: synthetic
+  n_synthetic: 200
+  seq_len: 32
+  vocab_size: 256
+  forget_fraction: 0.1
+  holdout_fraction: 0.2
+  outlier_fraction: 0.3
+unlearn:
+  method: npo
+  epochs: 1
+  finetune_epochs: 1
+  batch_size: 8
+  learning_rate: 1.0e-3
+  beta: 0.1
+  retain_weight: 1.0
+attack:
+  method: loss_threshold
+federated:
+  num_clients: 4
+  rounds: 3
+  local_epochs: 1
+  unlearn_method: approx

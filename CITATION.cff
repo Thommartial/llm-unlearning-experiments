@@ -18,7 +18,7 @@ date-released: 2026-05-29
 repository-code: "https://github.com/Thommartial/llm-unlearning-experiments"
 references:
   - type: article
-    title: "Privacy Attacks on Machine Unlearning in Large Language Models: Attacks, Defences, and Verification Challenges"
+    title: "Privacy Vulnerabilities of Machine Unlearning in Large Language Models: Attacks, Defences, and Verification Challenges"
     authors:
       - family-names: Epalle
         given-names: Thomas Martial E.

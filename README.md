@@ -1,6 +1,6 @@
 # LLM Unlearning Privacy Experiments
 
-Code for the experiments in *Privacy Attacks on Machine Unlearning in Large
+Code for the experiments in *Privacy Vulnerabilities of Machine Unlearning in Large
 Language Models* (CIS\*6590, University of Guelph). We fine-tune small language
 models on a controlled benchmark, unlearn part of the training data, and
 measure how much an attacker can still infer about the forgotten records.
@@ -57,6 +57,30 @@ paper figures from a sweep CSV with:
 ```bash
 python scripts/make_paper_figures.py --csv results/sweep/sweep_raw.csv --out figures
 ```
+
+## Federated experiment
+
+A federated extension trains a global model by FedAvg over several clients
+(client 0 holds the forget set, the rest shard the retain set), then unlearns
+that client and attacks the result. It reports the same residual-leakage and
+equity metrics plus an `update_signal_auc`: whether the unlearning update itself
+reveals which records were removed (the second-order signal in a distributed
+setting).
+
+```bash
+# validate offline in seconds (tiny model, synthetic data, CPU):
+python scripts/run_federated.py --config configs/smoke_fed_synthetic.yaml --run
+# real run on a GPU (edit model.name for distilgpt2 / gpt2 / gpt2-medium):
+python scripts/run_federated.py --config configs/fed_tofu.yaml --run
+```
+
+Knobs live under `federated:` in the config (`num_clients`, `rounds`,
+`local_epochs`, and `unlearn_method: approx | retrain`). `approx` reuses the
+configured `unlearn.method` server-side; `retrain` re-runs FedAvg over the
+retain clients as the gold reference. On Kaggle, run `notebooks/kaggle_fed_sweep.ipynb`,
+which sweeps models and seeds and is resumable across sessions. GPT-2-medium
+needs the 16 GB card; a 4 GB GTX 1050 handles the smoke test, DistilGPT-2, and
+GPT-2.
 
 ## Notes
 
