@@ -17,7 +17,7 @@ class ModelConfig:
 
 @dataclass
 class DataConfig:
-    dataset: str = "tofu"        # "tofu" | "synthetic"
+    dataset: str = "tofu"        # "tofu" | "tofu_official" | "synthetic" | "synthetic_official"
     forget_fraction: float = 0.05
     holdout_fraction: float = 0.2
     max_samples: int | None = None

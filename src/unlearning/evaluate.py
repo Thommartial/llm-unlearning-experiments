@@ -27,12 +27,13 @@ def mean_loss(model, dataset, cfg, device: str) -> float:
     import torch
     from torch.utils.data import DataLoader
 
-    from .data import collate
+    from .data import collate_for
 
     model.eval()
     losses = []
     with torch.no_grad():
-        for batch in DataLoader(dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate):
+        for batch in DataLoader(dataset, batch_size=cfg.unlearn.batch_size,
+                                collate_fn=collate_for(dataset)):
             out = model(input_ids=batch["input_ids"].to(device),
                         attention_mask=batch["attention_mask"].to(device),
                         labels=batch["labels"].to(device))

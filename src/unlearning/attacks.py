@@ -7,18 +7,22 @@ import torch
 import torch.nn.functional as F
 
 from .config import ExperimentConfig
-from .data import Splits, collate
+from .data import Splits, collate_for
 
 
 def _token_logprobs(model, batch: dict[str, torch.Tensor], device: str):
-    """Return per-token log-probs [B, T-1] of the realised next tokens, and a mask."""
+    """Return per-token log-probs [B, T-1] of the realised next tokens, and a mask.
+
+    The mask comes from the labels (-100 = not scored): padding only on the
+    legacy paths, padding and question tokens on the answer-only path.
+    """
     ids = batch["input_ids"].to(device)
     mask = batch["attention_mask"].to(device)
     logits = model(input_ids=ids, attention_mask=mask).logits
     logp = F.log_softmax(logits[:, :-1, :], dim=-1)
     target = ids[:, 1:]
     tok = logp.gather(-1, target.unsqueeze(-1)).squeeze(-1)
-    return tok, mask[:, 1:]
+    return tok, (batch["labels"][:, 1:] != -100).to(device=device, dtype=mask.dtype)
 
 
 def sequence_avg_logprob(model, batch, device: str) -> torch.Tensor:
@@ -43,7 +47,7 @@ def score_dataset(model, dataset, cfg: ExperimentConfig, device: str) -> torch.T
     """Per-record membership score (higher = more likely a member)."""
     model.eval()
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate
+        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate_for(dataset)
     )
     out = []
     for batch in loader:
@@ -68,7 +72,7 @@ def memorisation_scores(model, dataset, cfg: ExperimentConfig, device: str) -> t
     """Per-record memorisation (mean log-prob); higher = more memorised."""
     model.eval()
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate
+        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate_for(dataset)
     )
     out = [sequence_avg_logprob(model, batch, device) for batch in loader]
     return torch.cat(out).cpu()

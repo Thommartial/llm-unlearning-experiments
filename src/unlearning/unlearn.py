@@ -9,7 +9,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 
 from . import attacks
 from .config import ExperimentConfig
-from .data import Splits, collate
+from .data import Splits, collate_for
 
 
 def resolve_device(cfg: ExperimentConfig) -> str:
@@ -42,7 +42,7 @@ def build_model_and_tokenizer(cfg: ExperimentConfig):
 
 def _loader(dataset, cfg: ExperimentConfig, shuffle: bool = True) -> DataLoader:
     return DataLoader(dataset, batch_size=cfg.unlearn.batch_size,
-                      shuffle=shuffle, collate_fn=collate)
+                      shuffle=shuffle, collate_fn=collate_for(dataset))
 
 
 def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr: float) -> None:
