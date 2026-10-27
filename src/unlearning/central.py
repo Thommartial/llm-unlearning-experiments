@@ -200,8 +200,9 @@ def save_scores(result: dict, path) -> None:
     `row_ids__{set}`, and on the official splits `{stage}__truth_ratio__forget`,
     `{stage}__rouge__{set}` and `{stage}__generated__{set}`; the gradient
     alignment of each method as `post_<method>__grad_align__{set}` and
-    `post_<method>__grad_align_random__{set}`. Stages: base, pre,
-    post_<method>."""
+    `post_<method>__grad_align_random__{set}`; the outlier tags as
+    `strata__{non-member set}__{definition}__{forget,holdout}` (no holdout
+    tags for `legacy`). Stages: base, pre, post_<method>."""
     from pathlib import Path
 
     import numpy as np
@@ -209,6 +210,11 @@ def save_scores(result: dict, path) -> None:
     from . import tofu_metrics
 
     arrays = {f"row_ids__{k}": np.asarray(v) for k, v in result["row_ids"].items()}
+    for nm, defs in result.get("strata", {}).items():
+        for d, tags in defs.items():
+            for side in ("forget", "holdout"):
+                if tags.get(side) is not None:
+                    arrays[f"strata__{nm}__{d}__{side}"] = np.asarray(tags[side], dtype=bool)
     for stage, res in _stages(result).items():
         for a, by_set in res["scores"].items():
             arrays.update({f"{stage}__{a}__{k}": v.numpy() for k, v in by_set.items()})

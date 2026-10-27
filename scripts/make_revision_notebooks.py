@@ -45,6 +45,11 @@ def _md(text: str) -> dict:
     return {"cell_type": "markdown", "metadata": {}, "source": [line + "\n" for line in lines[:-1]] + lines[-1:]}
 
 
+def _with_ids(cells: list[dict]) -> list[dict]:
+    """nbformat 4.5 cell ids (required by newer nbformat versions)."""
+    return [{"id": f"cell-{i}", **c} for i, c in enumerate(cells)]
+
+
 def notebook(name: str, spec: dict) -> dict:
     camp = spec["campaign"]
     pilot = camp == "pilot"
@@ -68,9 +73,12 @@ REPO = "/tmp/repo"  # outside /kaggle/working: only results and logs are kept as
 subprocess.run(["git", "clone", "-q", REPO_URL, REPO], check=True)
 os.chdir(REPO)
 subprocess.run(["git", "checkout", "-q", REPO_COMMIT], check=True)
-print(subprocess.run(["git", "log", "-1", "--oneline"], capture_output=True, text=True).stdout)"""),
+print(subprocess.run(["git", "log", "-1", "--oneline"], capture_output=True, text=True).stdout)
+# sys.path.insert below reaches this kernel only: every subprocess gets src/ on PYTHONPATH as well
+ENV = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [f"{REPO}/src", os.environ.get("PYTHONPATH")]))}"""),
         _code(f"""subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt", "peft",
-                {", ".join(repr(p) for p in PINS)}], check=True)"""),
+                {", ".join(repr(p) for p in PINS)}], check=True)
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".", "--no-deps"], check=True)  # the package itself"""),
         _code("""sys.path.insert(0, "src")
 import torch, transformers, peft
 n_gpu = torch.cuda.device_count()
@@ -79,12 +87,12 @@ for i in range(n_gpu):
     print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
 assert n_gpu >= len(GPU_SEEDS), f"need {len(GPU_SEEDS)} GPU(s), found {n_gpu}" """),
         _code("""# every test, CUDA-only ones included: a skipped CUDA test fails the notebook
-tests = subprocess.run([sys.executable, "-m", "pytest", "-q", "tests/"], env={**os.environ, "REQUIRE_CUDA_TESTS": "1"})
+tests = subprocess.run([sys.executable, "-m", "pytest", "-q", "tests/"], env={**ENV, "REQUIRE_CUDA_TESTS": "1"})
 assert tests.returncode == 0, "tests failed (or a CUDA-only test was skipped)" """),
         _code("""# the smoke config on the GPU: every revision path and the pilot, tiny models
 for args in (["--campaign", "smoke"], ["--campaign", "pilot", "--config", "configs/revision/smoke_cpu.yaml"]):
     smoke = subprocess.run([sys.executable, "scripts/run_revision.py", *args, "--device", "cuda",
-                            "--out-dir", "/tmp/smoke"])
+                            "--out-dir", "/tmp/smoke"], env=ENV)
     assert smoke.returncode == 0, f"smoke run failed: {args}" """),
         _code("""import time
 os.makedirs("/kaggle/working/logs", exist_ok=True)
@@ -94,7 +102,7 @@ for gpu, seeds in GPU_SEEDS.items():
     cmd = [sys.executable, "scripts/run_revision.py", "--campaign", CAMPAIGN]
     if seeds is not None:
         cmd += ["--seeds", *map(str, seeds), "--out", f"results/revision/{CAMPAIGN}_gpu{gpu}.csv"]
-    env = {**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu), "PYTHONUNBUFFERED": "1", "REPO_COMMIT": REPO_COMMIT}
+    env = {**ENV, "CUDA_VISIBLE_DEVICES": str(gpu), "PYTHONUNBUFFERED": "1", "REPO_COMMIT": REPO_COMMIT}
     procs[gpu] = subprocess.Popen(cmd, stdout=open(logs[gpu], "w"), stderr=subprocess.STDOUT, env=env)
     print(f"GPU {gpu}: {' '.join(cmd)} -> {logs[gpu]}")
 start = time.time()"""),
@@ -126,16 +134,17 @@ ok = set(report["selected"]) == selected and variants == ["central", "iid_K5"]""
         cells.append(_code("""# success is judged by the result files, not by the exit codes
 import glob
 csvs = sorted(glob.glob(f"results/revision/{CAMPAIGN}_gpu*.csv"))
-check = subprocess.run([sys.executable, "scripts/run_revision.py", "--campaign", CAMPAIGN, "--check", *csvs])
+check = subprocess.run([sys.executable, "scripts/run_revision.py", "--campaign", CAMPAIGN, "--check", *csvs],
+                       env=ENV)
 if csvs:
     subprocess.run([sys.executable, "scripts/run_revision.py", "--merge", *csvs,
-                    "--out", f"results/revision/{CAMPAIGN}.csv"], check=True)
+                    "--out", f"results/revision/{CAMPAIGN}.csv"], check=True, env=ENV)
 ok = check.returncode == 0"""))
     cells.append(_code("""import shutil
 archive = shutil.make_archive(f"/kaggle/working/revision_{CAMPAIGN}", "zip", "results/revision")
 print("results ->", archive)
 assert ok, "incomplete results: see the check above and the logs in /kaggle/working/logs/" """))
-    return {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python",
+    return {"cells": _with_ids(cells), "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python",
                                                         "name": "python3"},
                                          "language_info": {"name": "python"}, "accelerator": "GPU"},
             "nbformat": 4, "nbformat_minor": 5}

@@ -212,6 +212,7 @@ def test_max_samples_caps_official_splits_and_eval_sets():
 
 def test_notebooks_are_generated_and_parse():
     import ast
+    import re
 
     spec = importlib.util.spec_from_file_location("make_revision_notebooks", "scripts/make_revision_notebooks.py")
     gen = importlib.util.module_from_spec(spec)
@@ -228,6 +229,21 @@ def test_notebooks_are_generated_and_parse():
             ast.parse(cell)
         assert 'REPO_COMMIT = "SET_BY_KAGGLE_RUN"' in code[0] and f'CAMPAIGN = "{nb_spec["campaign"]}"' in code[0]
         assert any('"REQUIRE_CUDA_TESTS": "1"' in c for c in code)
+        # every subprocess can import the package (sys.path.insert reaches the kernel only)
+        assert 'ENV = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [f"{REPO}/src"' in code[1]
+        assert any('"pip", "install", "-q", "-e", ".", "--no-deps"' in c for c in code)
+        calls = [n for cell in code for n in ast.walk(ast.parse(cell)) if isinstance(n, ast.Call)
+                 and ast.unparse(n.func) in ("subprocess.run", "subprocess.Popen")
+                 and ast.unparse(n.args[0]).startswith("[sys.executable")]
+        assert len(calls) >= 4
+        for call in calls:
+            if "'pip'" in ast.unparse(call.args[0]):
+                continue
+            env = {k.arg: ast.unparse(k.value) for k in call.keywords}.get("env", "")
+            assert env == "ENV" or env.startswith("{**ENV") or env == "env", f"{name}: {ast.unparse(call)[:80]}"
+        assert 'env = {**ENV, "CUDA_VISIBLE_DEVICES"' in "".join(code)  # the campaign processes
+        ids = [c["id"] for c in nb["cells"]]
+        assert len(set(ids)) == len(ids) and all(re.fullmatch(r"[A-Za-z0-9_-]+", i) for i in ids)
         seeds = [s for v in nb_spec["gpu_seeds"].values() if v for s in v]
         if nb_spec["campaign"] != "pilot":
             units = campaign.units(campaign.read_campaign(REVISION / f"{nb_spec['campaign']}.yaml"))
@@ -296,7 +312,13 @@ def test_apply_calibration_from_the_script_and_the_pilot_report(tmp_path, capsys
     configs, _ = _calibration(tmp_path)
     path = tmp_path / "out" / "pilot_calibration.json"
     assert _script().main(["--apply-calibration", str(path), "--configs-dir", str(configs)]) == 0
-    assert "+  finetune_lr:" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "+  finetune_lr:" in out and "pilot flags: none" in out
+    flagged = json.loads(path.read_text())
+    flagged["flags"] = ["rounds: no R in [1, 2] brings the retain loss within 10%; kept 2"]
+    path.write_text(json.dumps(flagged))
+    assert _script().main(["--apply-calibration", str(path), "--configs-dir", str(configs)]) == 0  # no refusal
+    assert "pilot flags:\n  - rounds: no R in [1, 2]" in capsys.readouterr().out
     cfg = load_config(configs / "fed_iid.yaml")
     sel = report["selected"]
     assert (cfg.unlearn.finetune_lr, cfg.federated.rounds, cfg.federated.rho_factor) == (

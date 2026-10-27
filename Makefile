@@ -46,6 +46,9 @@ revision-micro:  ## Revision path on real TOFU, CPU: DistilGPT-2, 4 x 50 records
 > rm -rf results/revision/micro
 > python scripts/run_revision.py --campaign micro --out-dir results/revision/micro
 
+revision-figures:  ## Revision analysis (CPU): tables/revision/ and figures/revision/ from results/revision/
+> python scripts/analyze_revision.py --results results/revision --figures figures/revision --tables tables/revision
+
 lint:  ## Lint
 > ruff check src scripts tests
 
@@ -56,4 +59,4 @@ clean:  ## Remove caches and generated artifacts
 > rm -rf .pytest_cache .ruff_cache **/__pycache__ results/* && touch results/.gitkeep
 
 .PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures fed-figures revision-smoke \
-        revision-micro lint test clean
+        revision-micro revision-figures lint test clean

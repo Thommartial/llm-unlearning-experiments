@@ -195,6 +195,9 @@ def test_update_signal_columns(full_run, tmp_path):
     s = res["post"]["npo"]["alignment"]["scores"]
     assert np.array_equal(z["post_npo__grad_align__forget"], s["delta"]["forget"].numpy())
     assert np.array_equal(z["post_npo__grad_align_random__holdout10"], s["random"]["holdout10"].numpy())
+    assert np.array_equal(z["strata__primary__basediff__forget"], res["strata"]["primary"]["basediff"]["forget"])
+    assert np.array_equal(z["strata__holdout10__rarity__holdout"], res["strata"]["holdout10"]["rarity"]["holdout"])
+    assert "strata__primary__legacy__forget" in z and "strata__primary__legacy__holdout" not in z
     assert np.array_equal(z["post_retrain__grad_align__primary"],
                           res["post"]["retrain"]["alignment"]["scores"]["delta"]["primary"].numpy())
 

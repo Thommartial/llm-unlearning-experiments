@@ -13,7 +13,7 @@ variant) units already complete in --out. --check judges success by the
 result files: it exits 1 and lists the missing units if any unit of the
 selected models and seeds lacks rows. --apply-calibration fills the values
 marked `# set from pilot` in configs/revision/*.yaml from the pilot's report
-and prints the diff (review it, then commit).
+and prints the diff and the pilot's flags (review both, then commit).
 """
 
 from __future__ import annotations
@@ -47,8 +47,12 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.apply_calibration:
+        import json
+
         diff = campaign.apply_calibration(args.apply_calibration, args.configs_dir)
         print(diff or "no change: the configs already hold these values")
+        flags = json.loads(Path(args.apply_calibration).read_text()).get("flags", [])
+        print("pilot flags:" + ("".join(f"\n  - {f}" for f in flags) if flags else " none"))
         return 0
     if args.merge:
         if not args.out:
