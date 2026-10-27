@@ -53,7 +53,8 @@ class TokenDataset(Dataset):
 class QADataset(Dataset):
     """Unpadded QA records with answer-only labels and per-record metadata.
 
-    `row_ids` index the source TOFU config; `author_ids` = row // 20.
+    `row_ids` index the source TOFU config; `author_ids` = row // 20, plus
+    the number of member authors for holdout records (unique across splits).
     """
 
     def __init__(self, input_ids: list[torch.Tensor], labels: list[torch.Tensor],
@@ -171,13 +172,15 @@ def _tofu(cfg: ExperimentConfig, tokenizer) -> Splits:
     return _partition(cfg, examples, marker=None)
 
 
-def _qa_dataset(tokenizer, rows: list[dict], row_ids: list[int], max_length: int) -> QADataset:
+def _qa_dataset(tokenizer, rows: list[dict], row_ids: list[int], max_length: int,
+                author_offset: int = 0) -> QADataset:
     ids, labels = [], []
     for r in rows:
         i, lab = encode_qa(tokenizer, r["question"], r["answer"], max_length)
         ids.append(i)
         labels.append(lab)
-    return QADataset(ids, labels, row_ids, [i // TOFU_AUTHOR_SIZE for i in row_ids],
+    return QADataset(ids, labels, row_ids,
+                     [author_offset + i // TOFU_AUTHOR_SIZE for i in row_ids],
                      [r["question"] for r in rows], [r["answer"] for r in rows],
                      tokenizer.pad_token_id)
 
@@ -200,7 +203,8 @@ def _tofu_official(cfg: ExperimentConfig, tokenizer) -> Splits:
     return Splits(
         forget=_qa_dataset(tokenizer, forget, list(range(n_retain, len(full))), n),
         retain=_qa_dataset(tokenizer, retain, list(range(n_retain)), n),
-        holdout=_qa_dataset(tokenizer, holdout, list(range(len(holdout))), n),
+        holdout=_qa_dataset(tokenizer, holdout, list(range(len(holdout))), n,
+                            author_offset=len(full) // TOFU_AUTHOR_SIZE),
         forget_is_outlier=[False] * len(forget),
     )
 
@@ -227,11 +231,12 @@ def _synthetic_official(cfg: ExperimentConfig) -> Splits:
                 out.append((q, a))
         return out
 
-    def to_ds(pairs: list[tuple], row_ids: list[int]) -> QADataset:
+    def to_ds(pairs: list[tuple], row_ids: list[int], author_offset: int = 0) -> QADataset:
         ids = [torch.tensor(q + a + [eos]) for q, a in pairs]
         labels = [torch.tensor([-100] * len(q) + a + [eos]) for q, a in pairs]
         text = [" ".join(map(str, q)) for q, _ in pairs], [" ".join(map(str, a)) for _, a in pairs]
-        return QADataset(ids, labels, row_ids, [i // TOFU_AUTHOR_SIZE for i in row_ids],
+        return QADataset(ids, labels, row_ids,
+                         [author_offset + i // TOFU_AUTHOR_SIZE for i in row_ids],
                          *text, pad_token_id=eos)
 
     members, holdout = author_rows(n_members), author_rows(n_hold)
@@ -239,7 +244,7 @@ def _synthetic_official(cfg: ExperimentConfig) -> Splits:
     return Splits(
         forget=to_ds(members[n_retain:], list(range(n_retain, len(members)))),
         retain=to_ds(members[:n_retain], list(range(n_retain))),
-        holdout=to_ds(holdout, list(range(len(holdout)))),
+        holdout=to_ds(holdout, list(range(len(holdout))), author_offset=n_members),
         forget_is_outlier=[False] * (len(members) - n_retain),
     )
 

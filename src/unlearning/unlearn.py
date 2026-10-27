@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 
 import torch
@@ -40,26 +41,48 @@ def build_model_and_tokenizer(cfg: ExperimentConfig):
     return model, tok
 
 
-def _loader(dataset, cfg: ExperimentConfig, shuffle: bool = True) -> DataLoader:
-    return DataLoader(dataset, batch_size=cfg.unlearn.batch_size,
+def _loader(dataset, cfg: ExperimentConfig, shuffle: bool = True,
+            batch_size: int | None = None) -> DataLoader:
+    return DataLoader(dataset, batch_size=batch_size or cfg.unlearn.batch_size,
                       shuffle=shuffle, collate_fn=collate_for(dataset))
 
 
+def _use_amp(cfg: ExperimentConfig, device: str) -> bool:
+    """fp16 mixed precision runs on CUDA only; the CPU path stays plain fp32."""
+    return cfg.model.precision == "fp16_amp" and str(device).startswith("cuda")
+
+
+def _autocast(cfg: ExperimentConfig, device: str):
+    if _use_amp(cfg, device):
+        return torch.autocast(device_type="cuda", dtype=torch.float16)
+    return contextlib.nullcontext()
+
+
+def _step(loss, model, opt, scaler) -> None:
+    """Backward, clip at 1.0 and step; the scaler is a pass-through when disabled."""
+    scaler.scale(loss).backward()
+    scaler.unscale_(opt)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    scaler.step(opt)
+    scaler.update()
+
+
 def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr: float) -> None:
-    """Standard causal-LM fine-tuning loop."""
+    """Standard causal-LM fine-tuning loop (batch size `train_batch_size`)."""
     model.to(device).train()
     opt = torch.optim.AdamW(model.parameters(), lr=lr)
+    scaler = torch.amp.GradScaler("cuda", enabled=_use_amp(cfg, device))
+    batch_size = cfg.unlearn.train_batch_size or cfg.unlearn.batch_size
     for _ in range(epochs):
-        for batch in _loader(dataset, cfg):
+        for batch in _loader(dataset, cfg, batch_size=batch_size):
             opt.zero_grad()
-            out = model(input_ids=batch["input_ids"].to(device),
-                        attention_mask=batch["attention_mask"].to(device),
-                        labels=batch["labels"].to(device))
+            with _autocast(cfg, device):
+                out = model(input_ids=batch["input_ids"].to(device),
+                            attention_mask=batch["attention_mask"].to(device),
+                            labels=batch["labels"].to(device))
             if not torch.isfinite(out.loss):
                 continue
-            out.loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            opt.step()
+            _step(out.loss, model, opt, scaler)
 
 
 def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str):
@@ -76,6 +99,7 @@ def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
     method = cfg.unlearn.method
     model.to(device).train()
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.unlearn.learning_rate)
+    scaler = torch.amp.GradScaler("cuda", enabled=_use_amp(cfg, device))
 
     ref = None
     if method == "npo":
@@ -101,27 +125,27 @@ def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
     for _ in range(cfg.unlearn.epochs):
         for batch in _loader(splits.forget, cfg):
             opt.zero_grad()
-            forget_loss = lm_loss(batch)
+            with _autocast(cfg, device):
+                forget_loss = lm_loss(batch)
 
-            if method == "gradient_ascent":
-                loss = -forget_loss
-            elif method == "gradient_difference":
-                loss = -forget_loss + cfg.unlearn.retain_weight * lm_loss(next_retain())
-            elif method == "npo":
-                beta = cfg.unlearn.beta
-                lp_theta = attacks.sequence_avg_logprob(model, batch, device)
-                with torch.no_grad():
-                    lp_ref = attacks.sequence_avg_logprob(ref, batch, device)
-                npo = (2.0 / beta) * torch.nn.functional.softplus(
-                    beta * (lp_theta - lp_ref)
-                ).mean()
-                loss = npo + cfg.unlearn.retain_weight * lm_loss(next_retain())
-            else:
-                raise ValueError(f"Unknown unlearning method '{method}'.")
+                if method == "gradient_ascent":
+                    loss = -forget_loss
+                elif method == "gradient_difference":
+                    loss = -forget_loss + cfg.unlearn.retain_weight * lm_loss(next_retain())
+                elif method == "npo":
+                    beta = cfg.unlearn.beta
+                    # log-probs come back in fp32; keep the NPO terms in fp32
+                    lp_theta = attacks.sequence_avg_logprob(model, batch, device)
+                    with torch.no_grad():
+                        lp_ref = attacks.sequence_avg_logprob(ref, batch, device)
+                    npo = (2.0 / beta) * torch.nn.functional.softplus(
+                        beta * (lp_theta - lp_ref).float()
+                    ).mean()
+                    loss = npo + cfg.unlearn.retain_weight * lm_loss(next_retain())
+                else:
+                    raise ValueError(f"Unknown unlearning method '{method}'.")
 
             if not torch.isfinite(loss):
                 continue  # skip pathological steps instead of corrupting the model
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            opt.step()
+            _step(loss, model, opt, scaler)
     return model

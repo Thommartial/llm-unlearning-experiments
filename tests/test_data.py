@@ -75,7 +75,8 @@ def test_synthetic_official_split_sizes_and_disjointness():
     assert set(f.row_ids).isdisjoint(r.row_ids)
     assert sorted(f.row_ids + r.row_ids) == list(range(200))
     assert set(f.author_ids).isdisjoint(r.author_ids)
-    assert set(f.author_ids) == {8, 9} and set(h.author_ids) == {0, 1}
+    assert set(f.author_ids) == {8, 9} and set(h.author_ids) == {10, 11}
+    assert set(h.author_ids).isdisjoint(f.author_ids + r.author_ids)
     assert len(splits.forget_is_outlier) == len(f)
 
 

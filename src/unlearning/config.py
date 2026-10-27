@@ -13,6 +13,7 @@ import yaml
 class ModelConfig:
     name: str = "gpt2"          # "tiny" builds a small untrained GPT-2 (offline)
     dtype: str = "float32"
+    precision: str = "fp32"     # fp32 | fp16_amp (fp16 autocast + GradScaler, CUDA only)
 
 
 @dataclass
@@ -36,7 +37,9 @@ class UnlearnConfig:
     finetune_epochs: int = 1
     learning_rate: float = 1.0e-5      # used for unlearning
     finetune_lr: float | None = None    # base fine-tuning; defaults to learning_rate
-    batch_size: int = 4
+    batch_size: int = 4                    # unlearning
+    train_batch_size: int | None = None    # fine-tuning and FedAvg; defaults to batch_size
+    eval_batch_size: int = 64              # per-record MIA scoring
     retain_weight: float = 1.0       # gradient_difference
     beta: float = 0.1                # npo
 

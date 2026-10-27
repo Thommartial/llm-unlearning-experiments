@@ -15,14 +15,17 @@ def _token_logprobs(model, batch: dict[str, torch.Tensor], device: str):
 
     The mask comes from the labels (-100 = not scored): padding only on the
     legacy paths, padding and question tokens on the answer-only path.
+    Log-probs are computed in fp32 with cross_entropy (0 at masked positions).
     """
     ids = batch["input_ids"].to(device)
     mask = batch["attention_mask"].to(device)
     logits = model(input_ids=ids, attention_mask=mask).logits
-    logp = F.log_softmax(logits[:, :-1, :], dim=-1)
-    target = ids[:, 1:]
-    tok = logp.gather(-1, target.unsqueeze(-1)).squeeze(-1)
-    return tok, (batch["labels"][:, 1:] != -100).to(device=device, dtype=mask.dtype)
+    # Targets shifted left and padded with -100 so the full (contiguous) logits can be
+    # flattened without a copy; a transposed [B, V, T] input loses precision on GPT-2.
+    target = F.pad(batch["labels"][:, 1:], (0, 1), value=-100).to(device)
+    tok = -F.cross_entropy(logits.float().reshape(-1, logits.shape[-1]), target.reshape(-1),
+                           reduction="none").view(target.shape)[:, :-1]
+    return tok, (target[:, :-1] != -100).to(mask.dtype)
 
 
 def sequence_avg_logprob(model, batch, device: str) -> torch.Tensor:
@@ -47,7 +50,7 @@ def score_dataset(model, dataset, cfg: ExperimentConfig, device: str) -> torch.T
     """Per-record membership score (higher = more likely a member)."""
     model.eval()
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate_for(dataset)
+        dataset, batch_size=cfg.unlearn.eval_batch_size, collate_fn=collate_for(dataset)
     )
     out = []
     for batch in loader:
@@ -72,7 +75,7 @@ def memorisation_scores(model, dataset, cfg: ExperimentConfig, device: str) -> t
     """Per-record memorisation (mean log-prob); higher = more memorised."""
     model.eval()
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=cfg.unlearn.batch_size, collate_fn=collate_for(dataset)
+        dataset, batch_size=cfg.unlearn.eval_batch_size, collate_fn=collate_for(dataset)
     )
     out = [sequence_avg_logprob(model, batch, device) for batch in loader]
     return torch.cat(out).cpu()
