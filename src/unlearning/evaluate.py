@@ -82,6 +82,16 @@ def mia_metrics(scores: dict) -> dict:
         metrics["mia_auc_outlier"], metrics["mia_advantage_outlier"] = entry(forget[outlier], holdout)
     if (~outlier).any():
         metrics["mia_auc_typical"], metrics["mia_advantage_typical"] = entry(forget[~outlier], holdout)
+    # Stratum-matched: outlier-forget vs outlier-holdout, typical vs typical.
+    for name, tags in scores.get("strata", {}).items():
+        f_out = np.array(tags["forget"], dtype=bool)
+        h_out = None if tags["holdout"] is None else np.array(tags["holdout"], dtype=bool)
+        for stratum, f_sel, h_sel in (("outlier", f_out, h_out),
+                                      ("typical", ~f_out, None if h_out is None else ~h_out)):
+            h = holdout if h_sel is None else holdout[h_sel]
+            metrics[f"mia_auc_{stratum}_{name}"], metrics[f"mia_advantage_{stratum}_{name}"] = \
+                entry(forget[f_sel], h)
+            metrics[f"n_forget_{stratum}_{name}"], metrics[f"n_holdout_{stratum}_{name}"] = int(f_sel.sum()), len(h)
     return metrics
 
 

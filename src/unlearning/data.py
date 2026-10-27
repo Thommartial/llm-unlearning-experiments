@@ -83,6 +83,8 @@ class Splits:
     retain: TokenDataset | QADataset
     holdout: TokenDataset | QADataset
     forget_is_outlier: list[bool] = field(default_factory=list)
+    # outlier definition -> {"forget": tags, "holdout": tags or None (compare with all holdout)}
+    strata: dict = field(default_factory=dict)
 
 
 def collate(batch, pad_token_id: int = 0):  # exposed for DataLoader(collate_fn=...)
