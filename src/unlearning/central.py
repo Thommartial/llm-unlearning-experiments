@@ -3,7 +3,7 @@
 The base and fine-tuned weights are kept on CPU and restored before each
 method, so retrain, GA, GD and NPO all start from the same weights and the
 fine-tune runs once instead of once per method. Outliers are tagged with the
-base model before fine-tuning (see `outliers`). Pre-unlearning scores and
+base model before fine-tuning, and the legacy tags after it (see `outliers`). Pre-unlearning scores and
 losses come from the fine-tuned model and are shared by every method. Each
 method is reseeded before it runs, so its result does not depend on which
 other methods ran before it (a resumed run gives the same numbers).
@@ -57,7 +57,7 @@ def run_central(cfg, device: str, methods=METHODS) -> dict:
     unlearn.finetune_base(cfg, splits, device, model=model)
     if not any(splits.forget_is_outlier):
         attacks.tag_outliers(model, splits, cfg, device)
-    outliers.add_legacy(splits)
+    outliers.add_legacy(splits, cfg, model, device)
     finetuned = _snapshot(model)
 
     result = {"pre": _evaluate(model, splits, cfg, device), "post": {},

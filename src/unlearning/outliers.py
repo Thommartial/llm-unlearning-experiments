@@ -6,6 +6,8 @@
   counted over the TOFU corpus (members + holdout, as encoded for training).
 * `legacy`: the submitted definition, the most memorized forget records on the
   fine-tuned model (forget only; compared against all holdout records).
+* `legacy_pooled`: memorization on the fine-tuned model, with forget and
+  holdout tagged by one pooled threshold (ablation: definition vs matching).
 
 `basediff` and `rarity` tag forget and holdout with one pooled threshold (the
 top `outlier_fraction` of forget + holdout), so outlier-forget can be compared
@@ -17,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-DEFINITIONS = ("basediff", "rarity", "legacy")
+DEFINITIONS = ("basediff", "rarity", "legacy", "legacy_pooled")
 
 
 def base_difficulty(base_model, datasets, cfg, device: str) -> list[np.ndarray]:
@@ -69,6 +71,13 @@ def tag_splits(splits, cfg, base_model, device: str) -> None:
         splits.strata[name] = {"forget": f_tag, "holdout": h_tag, "forget_value": f, "holdout_value": h}
 
 
-def add_legacy(splits) -> None:
-    """Record the memorization tag (`forget_is_outlier`) as the `legacy` stratum."""
+def add_legacy(splits, cfg, finetuned_model, device: str) -> None:
+    """Add the `legacy` stratum (the `forget_is_outlier` tag) and the
+    `legacy_pooled` stratum (memorization on the fine-tuned model, pooled)."""
+    from .attacks import memorisation_scores
+
     splits.strata["legacy"] = {"forget": list(splits.forget_is_outlier), "holdout": None}
+    f, h = (memorisation_scores(finetuned_model, ds, cfg, device).double().numpy()
+            for ds in (splits.forget, splits.holdout))
+    f_tag, h_tag = tag_pooled(f, h, cfg.data.outlier_fraction)
+    splits.strata["legacy_pooled"] = {"forget": f_tag, "holdout": h_tag, "forget_value": f, "holdout_value": h}

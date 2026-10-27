@@ -113,6 +113,12 @@ def test_central_tags_with_the_base_model_before_fine_tuning():
     for d in ("basediff", "rarity"):
         assert sum(strata[d]["forget"]) + sum(strata[d]["holdout"]) == int(cfg.data.outlier_fraction * n)
     assert strata["legacy"]["forget"] == res["forget_is_outlier"] and strata["legacy"]["holdout"] is None
+    # legacy_pooled: memorization on the fine-tuned model = its pre-unlearning loss score
+    lp, pre = strata["legacy_pooled"], res["pre"]["scores"]["loss_threshold"]
+    assert np.array_equal(lp["forget_value"], pre["forget"].double().numpy())
+    assert np.array_equal(lp["holdout_value"], pre["holdout"].double().numpy())
+    assert (lp["forget"], lp["holdout"]) == outliers.tag_pooled(lp["forget_value"], lp["holdout_value"],
+                                                                cfg.data.outlier_fraction)
     rows = central.central_rows(cfg, res)
     for d in outliers.DEFINITIONS:
         assert rows[0][f"n_forget_outlier_{d}"] + rows[0][f"n_forget_typical_{d}"] == len(splits.forget)
