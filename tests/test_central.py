@@ -182,13 +182,10 @@ def test_update_signal_columns(full_run, tmp_path):
                                              {k: post[k].numpy() for k in ("forget", r["nonmember"])})
         assert r["auc_score_change"] == evaluate._auc(change["forget"], change[r["nonmember"]])
         assert 0 <= r["tpr1_score_change"] <= 1
-        if r["method"] == "retrain":  # no Δθ from the fine-tuned model
-            assert r["auc_grad_align"] is None and r["delta_norm"] is None
-        else:
-            assert all(np.isfinite(r[k]) for k in ("auc_grad_align", "auc_grad_align_random", "tpr1_grad_align",
-                                                   "tpr1_grad_align_random", "delta_norm"))
-            assert r["delta_norm"] > 0
-    for method in ("gradient_ascent", "gradient_difference", "npo"):  # white-box: one value per method
+        assert all(np.isfinite(r[k]) for k in ("auc_grad_align", "auc_grad_align_random", "tpr1_grad_align",
+                                               "tpr1_grad_align_random", "delta_norm"))
+        assert r["delta_norm"] > 0
+    for method in central.METHODS:  # white-box: one value per method
         align = {(r["auc_grad_align"], r["auc_grad_align_random"]) for r in rows
                  if r["method"] == method and r["nonmember"] == "primary"}
         assert len(align) == 1
@@ -198,10 +195,12 @@ def test_update_signal_columns(full_run, tmp_path):
     s = res["post"]["npo"]["alignment"]["scores"]
     assert np.array_equal(z["post_npo__grad_align__forget"], s["delta"]["forget"].numpy())
     assert np.array_equal(z["post_npo__grad_align_random__holdout10"], s["random"]["holdout10"].numpy())
-    assert "post_retrain__grad_align__forget" not in z
+    assert np.array_equal(z["post_retrain__grad_align__primary"],
+                          res["post"]["retrain"]["alignment"]["scores"]["delta"]["primary"].numpy())
 
 
-def test_alignment_uses_delta_from_finetuned_snapshot(monkeypatch):
+@pytest.mark.parametrize("method", ["gradient_ascent", "retrain"])
+def test_alignment_uses_delta_from_finetuned_snapshot(monkeypatch, method):
     from unlearning import update_attacks
 
     seen = {}
@@ -215,14 +214,14 @@ def test_alignment_uses_delta_from_finetuned_snapshot(monkeypatch):
         return delta
     monkeypatch.setattr(update_attacks, "parameter_delta", wrapper)
     cfg = _cfg()
-    res = central.run_central(cfg, "cpu", methods=["gradient_ascent"])
+    res = central.run_central(cfg, "cpu", methods=[method])
     set_seed(cfg.seed)
     model, _ = unlearn.build_model_and_tokenizer(cfg)
     unlearn.finetune_base(cfg, data.load_splits(cfg), "cpu", model=model)
     for n, p in model.named_parameters():
         assert torch.equal(seen["pre"][n], p.detach())  # θ_pre = the fine-tuned model
         assert torch.equal(seen["delta"][n], seen["post"][n] - seen["pre"][n])
-    assert res["post"]["gradient_ascent"]["alignment"]["delta_norm"] == update_attacks._norm(seen["delta"])
+    assert res["post"][method]["alignment"]["delta_norm"] == update_attacks._norm(seen["delta"])
 
 
 def test_grad_alignment_can_be_switched_off():

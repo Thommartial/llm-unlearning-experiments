@@ -51,7 +51,7 @@ class UnlearnConfig:
 class AttackConfig:
     method: str = "loss_threshold"   # loss_threshold | min_k_prob
     min_k: float = 0.2
-    # central runs: white-box gradient alignment with Δθ for GA, GD and NPO (update_attacks)
+    # central and revision federated runs: white-box gradient alignment with Δθ (update_attacks)
     grad_alignment: bool = True
 
 
@@ -65,6 +65,12 @@ class FederatedConfig:
     rounds: int = 15                 # FedAvg aggregation rounds
     local_epochs: int = 1            # local epochs per client per round
     unlearn_method: str = "approx"   # approx (server-side, reuse unlearn.method) | retrain (FedAvg over retain clients)
+    # revision path (`run_fed`): retrain and client_ga
+    sharding: str = "iid"            # iid (by QA) | by_author: how clients 1..K-1 split the retain set
+    client_unlearn_epochs: int = 2   # client_ga: gradient-ascent epochs on client 0
+    rho_factor: float = 1.0          # client_ga: radius = rho_factor x norm of the last FedAvg round's update
+    recovery_rounds: int = 2         # client_ga: FedAvg rounds over clients 1..K-1 after the upload
+    accumulate_on_device: bool = True  # FedAvg sums on the training device (CUDA); False keeps them on CPU
 
 
 @dataclass

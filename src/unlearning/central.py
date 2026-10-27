@@ -19,9 +19,10 @@ retrained model of the same run.
 
 Update-signal attacks (`update_attacks`): every row carries the AUC of the
 per-record score change from the fine-tuned model to the method (pre −
-post). GA, GD and NPO also get the white-box gradient alignment with
+post). Every method also gets the white-box gradient alignment with
 Δθ = θ_post − θ_pre, θ_pre being the restored fine-tuned snapshot, and the
-same with a random direction of the same norm as a negative control.
+same with a random direction of the same norm as a negative control. For
+retrain, Δθ = θ_retrain − θ_pre is the version change a user would observe.
 """
 
 from __future__ import annotations
@@ -116,7 +117,7 @@ def run_central(cfg, device: str, methods=METHODS) -> dict:
             unlearn.apply_unlearning(model, splits, replace(cfg, unlearn=replace(cfg.unlearn, method=method)),
                                      device)
         result["post"][method] = _evaluate(model, splits, cfg, device, base_loss, eval_sets)
-        if method != "retrain" and cfg.attack.grad_alignment:
+        if cfg.attack.grad_alignment:
             result["post"][method]["alignment"] = _alignment(model, finetuned, splits, cfg, device,
                                                              ALIGN_SEED + 10 * cfg.seed + METHODS.index(method))
     return result
@@ -154,7 +155,7 @@ def save_scores(result: dict, path) -> None:
     """Raw per-record values to one .npz: `{stage}__{attack}__{set}` scores,
     `row_ids__{set}`, and on the official splits `{stage}__truth_ratio__forget`,
     `{stage}__rouge__{set}` and `{stage}__generated__{set}`; the gradient
-    alignment of GA, GD and NPO as `post_<method>__grad_align__{set}` and
+    alignment of each method as `post_<method>__grad_align__{set}` and
     `post_<method>__grad_align_random__{set}`. Stages: base, pre,
     post_<method>."""
     from pathlib import Path
@@ -200,8 +201,8 @@ def _tpr(stage: dict, attack: str, nm: str) -> float:
 
 
 def _update_columns(result: dict, post: dict, attack: str, nm: str) -> dict:
-    """Score change pre − post of `attack` and, for GA, GD and NPO, the
-    gradient alignment with Δθ and with the random control (None otherwise)."""
+    """Score change pre − post of `attack` and the gradient alignment with Δθ
+    and with the random control (None when the alignment was not run)."""
     from . import evaluate, update_attacks
 
     pre_s, post_s = result["pre"]["scores"][attack], post["scores"][attack]
@@ -252,8 +253,8 @@ def central_rows(cfg, result: dict) -> list[dict]:
     attack and non-member rows of a method. Update-signal columns:
     `{auc,adv,tpr1}_score_change` (score change pre − post of the row's
     attack), `{auc,adv,tpr1}_grad_align` and `..._grad_align_random`
-    (white-box, the same for every attack of a method; None for retrain or
-    when `attack.grad_alignment` is off) and `delta_norm` = ‖Δθ‖.
+    (white-box, the same for every attack of a method; None when
+    `attack.grad_alignment` is off) and `delta_norm` = ‖Δθ‖.
     """
     from .outliers import DEFINITIONS
 
