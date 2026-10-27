@@ -18,7 +18,8 @@ in some protocols, to other clients, so its leakage matters.
 forget10 and runs projected gradient ascent itself (`client_ga`); the
 reference is federated retraining over clients 1..K-1. It reports the same
 attacks and TOFU metrics as `central.run_central`, and the update-signal
-attacks for client 0's upload (server view) and the global model (any
+attacks for client 0's upload (seen by the server, and by every client
+when the first recovery round broadcasts it) and the global model (any
 client). `run_federated` with `approx` is kept unchanged as the legacy path.
 """
 
@@ -179,9 +180,12 @@ def run_federated(cfg: ExperimentConfig, out_dir: Path) -> dict:
 # server's and the clients' view. The legacy functions above are unchanged.
 
 FED_METHODS = ("retrain", "client_ga")
-# stage -> who observes the change from θ_pre: the server sees client 0's upload,
+# stage -> who observes the change from θ_pre: the server receives client 0's upload
+# and adopts it, so the first recovery round broadcasts it to every client;
 # every client receives the global models
-VIEWS = {"retrain": "any_client", "client_ga_upload": "server", "client_ga": "any_client"}
+VIEWS = {"retrain": "any_client",
+         "client_ga_upload": "server, and all clients at the first recovery broadcast",
+         "client_ga": "any_client"}
 FED_ALIGN_OFFSET = 5  # random-control seeds: central.ALIGN_SEED + 10 * seed + 5 + stage index
 SHARD_SEED = 30_000   # retain sharding: default_rng(SHARD_SEED + seed)
 
@@ -298,7 +302,8 @@ def run_fed(cfg: ExperimentConfig, device: str, methods=FED_METHODS) -> dict:
       - "retrain": FedAvg from the base model over clients 1..K-1 for
         `rounds` rounds (the reference for gaps and forget quality);
       - "client_ga_upload": client 0's upload after projected gradient
-        ascent (server view, no TOFU metrics);
+        ascent, seen by the server and, once adopted, by every client at
+        the first recovery broadcast (no TOFU metrics);
       - "client_ga": the global model after the server adopts the upload
         and runs `recovery_rounds` FedAvg rounds over clients 1..K-1.
     Each stage gets the score change from θ_pre and, with
@@ -306,8 +311,18 @@ def run_fed(cfg: ExperimentConfig, device: str, methods=FED_METHODS) -> dict:
     the upload or θ_post, minus θ_pre) and a random control. Outlier strata
     come from the base model (`outliers.tag_splits`); the radius is
     rho = `rho_factor` x the norm of the last FedAvg round's update.
+
+    Costs as in `run_central`, with shared phases base_scoring, fedavg and
+    pre_eval; per stage: retrain `method` = the federated retrain;
+    client_ga_upload `client_unlearn` (= `method`); client_ga
+    `client_unlearn`, `recovery` and `method` = both. Communication
+    (`costs.communication`, trainable parameters only, i.e. the adapters
+    under LoRA): FedAvg K clients x `rounds`; retrain K-1 clients x
+    `rounds`; the upload 1 download (θ_pre) + 1 upload; client_ga that plus
+    K-1 clients x `recovery_rounds`. The final broadcast of a result is not
+    counted (the same for every stage).
     """
-    from . import central, data, outliers, tofu_metrics
+    from . import central, costs, data, outliers, tofu_metrics
 
     unknown = [m for m in methods if m not in FED_METHODS]
     if unknown:
@@ -317,50 +332,74 @@ def run_fed(cfg: ExperimentConfig, device: str, methods=FED_METHODS) -> dict:
 
     set_seed(cfg.seed)
     model, tokenizer = unlearn.build_model_and_tokenizer(cfg)
+    model.to(device)  # the base model is scored before any training moves it
     splits = data.load_splits(cfg, tokenizer)
     eval_sets = tofu_metrics.load_eval_sets(cfg, tokenizer, splits)
     clients = shard_clients(splits, cfg)
     base = central._snapshot(model) if "retrain" in methods else None
+    shared = {}
     with torch.random.fork_rng(devices=[]):  # scoring must not shift the FedAvg data order
-        base_scores = central._scores(model, splits, cfg, device)
-        outliers.tag_splits(splits, cfg, model, device, base_logprobs=base_scores["loss_threshold"])
-    norms = fedavg_rounds(model, clients, cfg, device, cfg.federated.rounds)
-    if not any(splits.forget_is_outlier):
-        attacks.tag_outliers(model, splits, cfg, device)
-    pre_state = central._snapshot(model)
-    base_loss = base_scores["loss_threshold"]
-    pre = central._evaluate(model, splits, cfg, device, base_loss, eval_sets)
-    outliers.add_legacy(splits, cfg, model, device, finetuned_logprobs=pre["scores"]["loss_threshold"])
+        with costs.phase(device) as shared["base_scoring"]:
+            base_scores = central._scores(model, splits, cfg, device)
+            outliers.tag_splits(splits, cfg, model, device, base_logprobs=base_scores["loss_threshold"])
+    with costs.phase(device) as shared["fedavg"]:
+        norms = fedavg_rounds(model, clients, cfg, device, cfg.federated.rounds)
+    with costs.phase(device) as shared["pre_eval"]:
+        if not any(splits.forget_is_outlier):
+            attacks.tag_outliers(model, splits, cfg, device)
+        pre_state = central._snapshot(model)
+        base_loss = base_scores["loss_threshold"]
+        pre = central._evaluate(model, splits, cfg, device, base_loss, eval_sets)
+        outliers.add_legacy(splits, cfg, model, device, finetuned_logprobs=pre["scores"]["loss_threshold"])
 
     sets = {"forget": splits.forget, **data.nonmember_sets(splits)}
     rho = cfg.federated.rho_factor * norms[-1]
-    result = {"base": {"scores": base_scores}, "pre": pre, "post": {},
+    n_clients, n_params = len(clients), costs.trainable_params(model)
+    result = {"base": {"scores": base_scores}, "pre": pre, "post": {}, "costs": shared,
+              "environment": costs.environment(device),
               "nonmember_sets": list(data.nonmember_sets(splits)),
               "row_ids": {k: central._row_ids(ds) for k, ds in sets.items()},
               "forget_is_outlier": list(splits.forget_is_outlier), "strata": splits.strata,
-              "federated": {"client_sizes": [len(c) for c in clients], "round_update_norms": norms, "rho": rho}}
+              "federated": {"client_sizes": [len(c) for c in clients], "round_update_norms": norms, "rho": rho,
+                            "comm_params": n_params,
+                            "comm_fedavg": costs.communication(
+                                n_params, *costs.fedavg_transfers(n_clients, cfg.federated.rounds))}}
 
-    def evaluate_stage(stage: str, tofu) -> None:
-        result["post"][stage] = central._evaluate(model, splits, cfg, device, base_loss, tofu)
+    def evaluate_stage(stage: str, tofu, spent: dict, transfers: tuple[int, int]) -> None:
+        with costs.phase(device) as spent["post_eval"]:
+            post = central._evaluate(model, splits, cfg, device, base_loss, tofu)
         if cfg.attack.grad_alignment:  # leaves the model at θ_pre
-            result["post"][stage]["alignment"] = central._alignment(
-                model, pre_state, splits, cfg, device,
-                central.ALIGN_SEED + 10 * cfg.seed + FED_ALIGN_OFFSET + list(VIEWS).index(stage))
+            with costs.phase(device) as spent["alignment"]:
+                post["alignment"] = central._alignment(
+                    model, pre_state, splits, cfg, device,
+                    central.ALIGN_SEED + 10 * cfg.seed + FED_ALIGN_OFFSET + list(VIEWS).index(stage))
+        post["costs"] = spent
+        post["communication"] = costs.communication(n_params, *transfers)
+        result["post"][stage] = post
 
     for method in methods:
         set_seed(cfg.seed)
         if method == "retrain":
-            model.load_state_dict(base)
-            fedavg_rounds(model, clients[1:], cfg, device, cfg.federated.rounds)
-            evaluate_stage("retrain", eval_sets)
+            spent = {}
+            with costs.phase(device) as spent["method"]:
+                central._restore(model, base)
+                fedavg_rounds(model, clients[1:], cfg, device, cfg.federated.rounds)
+            evaluate_stage("retrain", eval_sets, spent, costs.fedavg_transfers(n_clients - 1, cfg.federated.rounds))
         else:
-            model.load_state_dict(pre_state)
-            client_gradient_ascent(model, clients[0], cfg, device, pre_state, rho)
-            upload = central._snapshot(model)
-            evaluate_stage("client_ga_upload", None)
-            model.load_state_dict(upload)  # the server adopts the upload
-            fedavg_rounds(model, clients[1:], cfg, device, cfg.federated.recovery_rounds)
-            evaluate_stage("client_ga", eval_sets)
+            ga = {}
+            with costs.phase(device) as ga["client_unlearn"]:
+                central._restore(model, pre_state)
+                client_gradient_ascent(model, clients[0], cfg, device, pre_state, rho)
+                upload = central._snapshot(model)
+            # client 0 downloads θ_pre and uploads its result
+            evaluate_stage("client_ga_upload", None, {**ga, "method": ga["client_unlearn"]}, (1, 1))
+            spent = dict(ga)
+            with costs.phase(device) as spent["recovery"]:
+                central._restore(model, upload)  # the server adopts the upload
+                fedavg_rounds(model, clients[1:], cfg, device, cfg.federated.recovery_rounds)
+            spent["method"] = costs.combine(spent["client_unlearn"], spent["recovery"])
+            up, down = costs.fedavg_transfers(n_clients - 1, cfg.federated.recovery_rounds)
+            evaluate_stage("client_ga", eval_sets, spent, (1 + up, 1 + down))
     return result
 
 
@@ -368,8 +407,11 @@ def fed_rows(cfg: ExperimentConfig, result: dict) -> list[dict]:
     """`central.central_rows` for a `run_fed` result, plus the federated
     settings: `view` (who observes the stage's change), clients, sharding,
     rounds, recovery rounds, client epochs, `rho_factor`, `rho` and the last
-    FedAvg round's update norm. Every row has the same columns (the upload
-    stage has no TOFU metrics: None)."""
+    FedAvg round's update norm; communication: `comm_params`,
+    `comm_bytes_fedavg` (training θ_pre) and `comm_uploads_method`,
+    `comm_downloads_method`, `comm_bytes_method` (producing the stage from
+    θ_pre or, for retrain, from the base model). Every row has the same
+    columns (the upload stage has no TOFU metrics: None)."""
     from . import central
 
     rows = central.central_rows(cfg, result)
@@ -378,10 +420,14 @@ def fed_rows(cfg: ExperimentConfig, result: dict) -> list[dict]:
     extra = {"num_clients": fed.num_clients, "sharding": fed.sharding, "rounds": fed.rounds,
              "recovery_rounds": fed.recovery_rounds, "client_unlearn_epochs": fed.client_unlearn_epochs,
              "rho_factor": fed.rho_factor, "rho": result["federated"]["rho"],
-             "round_update_norm": result["federated"]["round_update_norms"][-1]}
+             "round_update_norm": result["federated"]["round_update_norms"][-1],
+             "comm_params": result["federated"]["comm_params"],
+             "comm_bytes_fedavg": result["federated"]["comm_fedavg"]["comm_bytes"]}
     out = []
     for r in rows:
         row = {k: r.get(k) for k in keys}
-        row = {**{k: row.pop(k) for k in ("model", "seed", "method")}, "view": VIEWS[r["method"]], **row, **extra}
+        comm = result["post"][r["method"]]["communication"]
+        row = {**{k: row.pop(k) for k in ("model", "seed", "method")}, "view": VIEWS[r["method"]], **row, **extra,
+               **{f"{k}_method": v for k, v in comm.items()}}
         out.append(row)
     return out

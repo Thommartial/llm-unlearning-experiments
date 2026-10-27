@@ -14,6 +14,7 @@ have been forgotten, so AUC > 0.5 means the update leaks the forget set.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 
 import numpy as np
@@ -69,6 +70,25 @@ def _norm(direction: dict) -> float:
     return float(sum(v.double().pow(2).sum() for v in direction.values()) ** 0.5)
 
 
+@contextlib.contextmanager
+def fp32_weights(model):
+    """Run with every floating parameter and buffer in fp32, then restore the
+    original dtypes (e.g. the fp16 base weights under LoRA). fp16 -> fp32 ->
+    fp16 is exact, so the weights come back unchanged. No-op for fp32 models."""
+    tensors = [t for t in (*model.parameters(), *model.buffers()) if t.is_floating_point()]
+    dtypes = [t.dtype for t in tensors]
+    if all(d == torch.float32 for d in dtypes):
+        yield model
+        return
+    for t in tensors:
+        t.data = t.data.float()
+    try:
+        yield model
+    finally:
+        for t, d in zip(tensors, dtypes, strict=True):
+            t.data = t.data.to(d)
+
+
 def grad_alignment_scores(model_at_pre, delta, dataset, device: str,
                           param_filter: Callable[[str], bool] | None = None):
     """Cosine between each record's loss gradient at θ_pre and Δθ.
@@ -80,17 +100,16 @@ def grad_alignment_scores(model_at_pre, delta, dataset, device: str,
     GD and NPO also descend the retain loss, so retain-like records can get a
     negative cosine.
 
-    Batch size 1, fp32, model in eval mode (no dropout). The dot product and
-    the norms are accumulated parameter by parameter (fp32 per parameter,
-    summed as Python floats), so no flat gradient is built. `delta` is a dict
-    {parameter name: fp32 tensor} (see `parameter_delta`) or a dict of such
-    dicts {label: direction}, which returns {label: scores} from one backward
-    pass per record. Only parameters that require grad and
+    Batch size 1, fp32 (base weights in another dtype are upcast for the
+    pass, `fp32_weights`), model in eval mode (no dropout). The dot product
+    and the norms are accumulated parameter by parameter (fp32 per
+    parameter, summed as Python floats), so no flat gradient is built.
+    `delta` is a dict {parameter name: fp32 tensor} (see `parameter_delta`)
+    or a dict of such dicts {label: direction}, which returns {label: scores}
+    from one backward pass per record. Only parameters that require grad and
     pass `param_filter` (e.g. the LoRA weights) are used; every direction
     must cover exactly those. A record without scored tokens gets NaN.
     """
-    from .attacks import _mean_of, _token_logprobs
-
     multi = all(isinstance(v, dict) for v in delta.values())
     directions = delta if multi else {None: delta}
     params = _params(model_at_pre, param_filter)
@@ -102,6 +121,15 @@ def grad_alignment_scores(model_at_pre, delta, dataset, device: str,
     model_at_pre.eval()
     loader = torch.utils.data.DataLoader(dataset, batch_size=1, collate_fn=collate_for(dataset))
     out = {label: [] for label in directions}
+    with fp32_weights(model_at_pre):
+        _accumulate(model_at_pre, loader, names, tensors, directions, d_norm, device, out)
+    scores = {label: torch.tensor(v, dtype=torch.float64) for label, v in out.items()}
+    return scores if multi else scores[None]
+
+
+def _accumulate(model_at_pre, loader, names, tensors, directions, d_norm, device, out) -> None:
+    from .attacks import _mean_of, _token_logprobs
+
     for batch in loader:
         with torch.enable_grad():
             loss = -_mean_of(*_token_logprobs(model_at_pre, batch, device)).sum()
@@ -118,5 +146,3 @@ def grad_alignment_scores(model_at_pre, delta, dataset, device: str,
         for label in directions:
             den = g_sq ** 0.5 * d_norm[label]
             out[label].append(dots[label] / den if den > 0 else float("nan"))
-    scores = {label: torch.tensor(v, dtype=torch.float64) for label, v in out.items()}
-    return scores if multi else scores[None]

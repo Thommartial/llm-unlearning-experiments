@@ -231,3 +231,16 @@ def test_grad_alignment_can_be_switched_off():
     assert "alignment" not in res["post"]["gradient_ascent"]
     rows = central.central_rows(cfg, res)
     assert all(r["auc_grad_align"] is None and r["auc_score_change"] is not None for r in rows)
+
+
+def test_cost_and_environment_columns(full_run):
+    import torch
+
+    cfg, res = full_run
+    rows = central.central_rows(cfg, res)
+    phases = ("base_scoring", "finetune", "pre_eval", "method", "post_eval", "alignment")
+    for r in rows:
+        assert all(r[f"time_s_{p}"] > 0 and r[f"peak_mem_mib_{p}"] is None for p in phases)  # CPU: no GPU peak
+        assert (r["gpu_name"], r["torch_version"], r["cuda_version"]) == ("cpu", torch.__version__, torch.version.cuda)
+    assert len({r["time_s_finetune"] for r in rows}) == 1  # shared phase
+    assert len({r["time_s_method"] for r in rows}) == len(central.METHODS)

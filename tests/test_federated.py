@@ -221,3 +221,24 @@ def test_run_fed_fp16_amp_on_cuda_is_finite():
     rows = federated.fed_rows(cfg, federated.run_fed(cfg, "cuda"))
     assert all(np.isfinite(r["auc_post"]) and np.isfinite(r["auc_grad_align"]) for r in rows)
     assert all(r["delta_norm"] <= r["rho"] * (1 + 1e-4) for r in rows if r["method"] == "client_ga_upload")
+
+
+def test_run_fed_costs_and_communication(fed_run):
+    cfg, res, _ = fed_run
+    rows = federated.fed_rows(cfg, res)
+    k, r, rec = cfg.federated.num_clients, cfg.federated.rounds, cfg.federated.recovery_rounds
+    n = res["federated"]["comm_params"]
+    assert n == sum(p.numel() for p in unlearn.build_model_and_tokenizer(cfg)[0].parameters())
+    expected = {"retrain": 2 * (k - 1) * r, "client_ga_upload": 2, "client_ga": 2 + 2 * (k - 1) * rec}
+    for row in rows:
+        assert row["comm_bytes_fedavg"] == 2 * k * r * n * 4
+        assert row["comm_bytes_method"] == expected[row["method"]] * n * 4
+        assert row["comm_uploads_method"] == row["comm_downloads_method"] == expected[row["method"]] // 2
+        assert all(row[f"time_s_{p}"] > 0 for p in ("base_scoring", "fedavg", "pre_eval", "method", "post_eval"))
+        assert row["gpu_name"] == "cpu"
+        if row["method"] == "client_ga":
+            assert row["time_s_method"] == row["time_s_client_unlearn"] + row["time_s_recovery"]
+        elif row["method"] == "client_ga_upload":
+            assert row["time_s_method"] == row["time_s_client_unlearn"] and row["time_s_recovery"] is None
+        else:
+            assert row["time_s_client_unlearn"] is None

@@ -23,6 +23,11 @@ post). Every method also gets the white-box gradient alignment with
 Δθ = θ_post − θ_pre, θ_pre being the restored fine-tuned snapshot, and the
 same with a random direction of the same norm as a negative control. For
 retrain, Δθ = θ_retrain − θ_pre is the version change a user would observe.
+
+With `model.lora` (TinyLlama) the same path trains LoRA adapters on frozen
+fp16 base weights: fine-tune, retrain (fresh adapters on the retain set) and
+unlearning change the adapters only, the NPO reference is a second frozen
+adapter, and Δθ covers the adapter weights (`unlearn.lora_filter`).
 """
 
 from __future__ import annotations
@@ -32,12 +37,33 @@ from dataclasses import replace
 METHODS = ("retrain", "gradient_ascent", "gradient_difference", "npo")
 ATTACKS = ("loss_threshold", "min_k_prob", "ref_calibrated")
 TPR_FPR = 0.01  # TPR at 1% FPR per run; raw scores are saved for pooling (`save_scores`)
+STAGE_PHASES = ("method", "post_eval", "alignment")  # cost phases of each method (`costs`)
 ALIGN_SEED = 20_000  # random control direction: ALIGN_SEED + 10 * seed + method index
 
 
 def _snapshot(model) -> dict:
-    """CPU copy of the weights, restored later with load_state_dict."""
-    return {k: v.detach().to("cpu", copy=True) for k, v in model.state_dict().items()}
+    """CPU copy of the weights, restored later with `_restore`. Under LoRA only
+    the adapter weights: the base weights are frozen and never change."""
+    from .unlearn import is_peft
+
+    state = model.state_dict()
+    if is_peft(model):
+        state = {k: v for k, v in state.items() if "lora_" in k}
+    return {k: v.detach().to("cpu", copy=True) for k, v in state.items()}
+
+
+def _restore(model, snapshot: dict) -> None:
+    """Load a `_snapshot` (all weights, or under LoRA all adapter weights)."""
+    from .unlearn import is_peft
+
+    if not is_peft(model):
+        model.load_state_dict(snapshot)
+        return
+    missing = {k for k in model.state_dict() if "lora_" in k} - set(snapshot)
+    unexpected = model.load_state_dict(snapshot, strict=False).unexpected_keys
+    if missing or unexpected:
+        raise RuntimeError(f"LoRA snapshot does not match the adapters: missing {sorted(missing)[:3]}, "
+                           f"unexpected {unexpected[:3]}")
 
 
 def _scores(model, splits, cfg, device: str, base_loss: dict | None = None) -> dict:
@@ -75,11 +101,15 @@ def run_central(cfg, device: str, methods=METHODS) -> dict:
     "row_ids", "forget_is_outlier", "strata"}. `base` holds the pre-trained
     model's scores; `pre` is the fine-tuned model, the pre-unlearning
     reference for every method, including retrain. `pre` and each method
-    carry raw TOFU values under "tofu" on the official splits.
+    carry raw TOFU values under "tofu" on the official splits. Costs
+    (`costs.phase`): shared phases under result["costs"] (base_scoring,
+    finetune, pre_eval) and per method under post[method]["costs"] (method
+    = unlearning or retrain, post_eval, alignment); the run environment
+    under result["environment"].
     """
     import torch
 
-    from . import attacks, data, outliers, tofu_metrics, unlearn
+    from . import attacks, costs, data, outliers, tofu_metrics, unlearn
     from .seed import set_seed
 
     unknown = [m for m in methods if m not in METHODS]
@@ -88,38 +118,50 @@ def run_central(cfg, device: str, methods=METHODS) -> dict:
 
     set_seed(cfg.seed)
     model, tokenizer = unlearn.build_model_and_tokenizer(cfg)
+    model.to(device)  # the base model is scored before any training moves it
     splits = data.load_splits(cfg, tokenizer)
     eval_sets = tofu_metrics.load_eval_sets(cfg, tokenizer, splits)
     base = _snapshot(model) if "retrain" in methods else None
+    shared = {}
     with torch.random.fork_rng(devices=[]):  # scoring must not shift the fine-tune's data order
-        base_scores = _scores(model, splits, cfg, device)
-        outliers.tag_splits(splits, cfg, model, device, base_logprobs=base_scores["loss_threshold"])
-    unlearn.finetune_base(cfg, splits, device, model=model)
-    if not any(splits.forget_is_outlier):
-        attacks.tag_outliers(model, splits, cfg, device)
-    finetuned = _snapshot(model)
-    base_loss = base_scores["loss_threshold"]
-    pre = _evaluate(model, splits, cfg, device, base_loss, eval_sets)
-    outliers.add_legacy(splits, cfg, model, device, finetuned_logprobs=pre["scores"]["loss_threshold"])
+        with costs.phase(device) as shared["base_scoring"]:
+            base_scores = _scores(model, splits, cfg, device)
+            outliers.tag_splits(splits, cfg, model, device, base_logprobs=base_scores["loss_threshold"])
+    with costs.phase(device) as shared["finetune"]:
+        unlearn.finetune_base(cfg, splits, device, model=model)
+    with costs.phase(device) as shared["pre_eval"]:
+        if not any(splits.forget_is_outlier):
+            attacks.tag_outliers(model, splits, cfg, device)
+        finetuned = _snapshot(model)
+        base_loss = base_scores["loss_threshold"]
+        pre = _evaluate(model, splits, cfg, device, base_loss, eval_sets)
+        outliers.add_legacy(splits, cfg, model, device, finetuned_logprobs=pre["scores"]["loss_threshold"])
 
-    result = {"base": {"scores": base_scores}, "pre": pre, "post": {},
+    result = {"base": {"scores": base_scores}, "pre": pre, "post": {}, "costs": shared,
+              "environment": costs.environment(device),
               "nonmember_sets": list(data.nonmember_sets(splits)),
               "row_ids": {k: _row_ids(ds) for k, ds in {"forget": splits.forget,
                                                          **data.nonmember_sets(splits)}.items()},
               "forget_is_outlier": list(splits.forget_is_outlier), "strata": splits.strata}
     for method in methods:
         set_seed(cfg.seed)
-        if method == "retrain":
-            model.load_state_dict(base)
-            unlearn.retrain_base(cfg, splits, device, model=model)
-        else:
-            model.load_state_dict(finetuned)
-            unlearn.apply_unlearning(model, splits, replace(cfg, unlearn=replace(cfg.unlearn, method=method)),
-                                     device)
-        result["post"][method] = _evaluate(model, splits, cfg, device, base_loss, eval_sets)
+        spent = {}
+        with costs.phase(device) as spent["method"]:
+            if method == "retrain":
+                _restore(model, base)
+                unlearn.retrain_base(cfg, splits, device, model=model)
+            else:
+                _restore(model, finetuned)
+                unlearn.apply_unlearning(model, splits, replace(cfg, unlearn=replace(cfg.unlearn, method=method)),
+                                         device)
+        with costs.phase(device) as spent["post_eval"]:
+            post = _evaluate(model, splits, cfg, device, base_loss, eval_sets)
         if cfg.attack.grad_alignment:
-            result["post"][method]["alignment"] = _alignment(model, finetuned, splits, cfg, device,
-                                                             ALIGN_SEED + 10 * cfg.seed + METHODS.index(method))
+            with costs.phase(device) as spent["alignment"]:
+                post["alignment"] = _alignment(model, finetuned, splits, cfg, device,
+                                               ALIGN_SEED + 10 * cfg.seed + METHODS.index(method))
+        post["costs"] = spent
+        result["post"][method] = post
     return result
 
 
@@ -128,13 +170,15 @@ def _alignment(model, finetuned: dict, splits, cfg, device: str, seed: int) -> d
     same norm, on forget and every non-member set. Leaves `model` at θ_pre."""
     from . import update_attacks
     from .data import nonmember_sets
+    from .unlearn import lora_filter
 
-    delta = update_attacks.parameter_delta(model, finetuned)
+    keep = lora_filter(cfg)  # under LoRA, Δθ covers the adapter weights only
+    delta = update_attacks.parameter_delta(model, finetuned, keep)
     dirs = {"delta": delta, "random": update_attacks.random_direction(delta, seed)}
     norm = update_attacks._norm(delta)
-    model.load_state_dict(finetuned)
+    _restore(model, finetuned)
     sets = {"forget": splits.forget, **nonmember_sets(splits)}
-    raw = {k: update_attacks.grad_alignment_scores(model, dirs, ds, device) for k, ds in sets.items()}
+    raw = {k: update_attacks.grad_alignment_scores(model, dirs, ds, device, keep) for k, ds in sets.items()}
     return {"delta_norm": norm, "scores": {d: {k: raw[k][d] for k in sets} for d in dirs}}
 
 
@@ -254,8 +298,13 @@ def central_rows(cfg, result: dict) -> list[dict]:
     `{auc,adv,tpr1}_score_change` (score change pre − post of the row's
     attack), `{auc,adv,tpr1}_grad_align` and `..._grad_align_random`
     (white-box, the same for every attack of a method; None when
-    `attack.grad_alignment` is off) and `delta_norm` = ‖Δθ‖.
+    `attack.grad_alignment` is off) and `delta_norm` = ‖Δθ‖. Costs:
+    `time_s_<phase>` (wall time) and `peak_mem_mib_<phase>` (peak GPU
+    memory; None on CPU) for the shared phases (base_scoring, finetune,
+    pre_eval) and the method's own (method, post_eval, alignment); then
+    `gpu_name`, `torch_version` and `cuda_version`.
     """
+    from . import costs
     from .outliers import DEFINITIONS
 
     keys = [("", "mia_auc", "mia_advantage")]
@@ -264,6 +313,8 @@ def central_rows(cfg, result: dict) -> list[dict]:
     rows = []
     for method, post in result["post"].items():
         tofu = _tofu_columns(result, post)
+        cost_cols = costs.columns({**result.get("costs", {}),
+                                   **{p: None for p in STAGE_PHASES}, **post.get("costs", {})})
         for a in ATTACKS:
             for nm in result["nonmember_sets"]:
                 bm = _metrics(result, result["base"], a, nm)
@@ -292,6 +343,8 @@ def central_rows(cfg, result: dict) -> list[dict]:
                     "retain_loss_post": post["losses"]["retain"],
                     **_update_columns(result, post, a, nm),
                     **tofu,
+                    **cost_cols,
+                    **result.get("environment", {}),
                 })
                 rows.append(row)
     return rows
