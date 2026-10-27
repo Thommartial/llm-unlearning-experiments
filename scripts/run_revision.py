@@ -4,13 +4,16 @@
     python scripts/run_revision.py --campaign central --check results/revision/central_gpu*.csv
     python scripts/run_revision.py --merge results/revision/central_gpu*.csv --out results/revision/central.csv
     python scripts/run_revision.py --campaign pilot
+    python scripts/run_revision.py --apply-calibration results/revision/pilot_calibration.json
 
 Campaigns: pilot, central, fed_iid, fed_ext, lora (Kaggle) and smoke, micro
 (CPU). The config defaults to configs/revision/<campaign>.yaml
 (smoke_cpu.yaml, micro_tofu_cpu.yaml). A run skips the (model, seed,
 variant) units already complete in --out. --check judges success by the
 result files: it exits 1 and lists the missing units if any unit of the
-selected models and seeds lacks rows.
+selected models and seeds lacks rows. --apply-calibration fills the values
+marked `# set from pilot` in configs/revision/*.yaml from the pilot's report
+and prints the diff (review it, then commit).
 """
 
 from __future__ import annotations
@@ -39,8 +42,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check", nargs="+", metavar="CSV", help="check these result files instead of running")
     ap.add_argument("--merge", nargs="+", metavar="CSV", help="merge these CSVs into --out")
     ap.add_argument("--list", action="store_true", help="list the units and exit")
+    ap.add_argument("--apply-calibration", metavar="JSON", help="fill the '# set from pilot' config values")
+    ap.add_argument("--configs-dir", default="configs/revision", help="configs for --apply-calibration")
     args = ap.parse_args(argv)
 
+    if args.apply_calibration:
+        diff = campaign.apply_calibration(args.apply_calibration, args.configs_dir)
+        print(diff or "no change: the configs already hold these values")
+        return 0
     if args.merge:
         if not args.out:
             ap.error("--merge needs --out")

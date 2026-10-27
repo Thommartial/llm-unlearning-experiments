@@ -233,3 +233,72 @@ def merge(paths, out) -> int:
     Path(out).unlink(missing_ok=True)  # overwrite, never append to an earlier merge
     write_rows(out, rows)
     return len(rows)
+
+
+# pilot value -> config files and dotted keys it fills (lines marked "# set from pilot")
+CALIBRATION = {
+    "finetune_lr": [("central.yaml", "unlearn.finetune_lr"), ("fed_iid.yaml", "unlearn.finetune_lr"),
+                    ("fed_ext.yaml", "unlearn.finetune_lr")],
+    "rounds": [("fed_iid.yaml", "federated.rounds"), ("fed_ext.yaml", "federated.rounds")],
+    "rho_factor": [("fed_iid.yaml", "federated.rho_factor"), ("fed_ext.yaml", "federated.rho_factor")],
+    "lora_finetune_lr": [("lora.yaml", "unlearn.finetune_lr")],
+    "lora_learning_rate": [("lora.yaml", "unlearn.learning_rate")],
+}
+
+
+def _yaml_value(v) -> str:
+    """A pilot value as YAML: ints as is, floats to 6 significant digits in a
+    form YAML reads as a float (PyYAML needs the dot in 5.0e-05)."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise ValueError(f"not a number: {v!r}")
+    if isinstance(v, int):
+        return str(v)
+    return yaml.safe_dump(float(f"{v:.6g}")).split("\n")[0]
+
+
+def apply_calibration(report_path, configs_dir="configs/revision") -> str:
+    """Fill the `# set from pilot` values of the campaign configs from the
+    pilot's `pilot_calibration.json`; returns the unified diff.
+
+    Only lines that carry the `# set from pilot` comment, under the right
+    top-level section, are changed (value only; comments and layout stay).
+    Applying again replaces the earlier values. Every file is checked first
+    (each target line found, every `campaign.requires` set); on an error
+    nothing is written.
+    """
+    import difflib
+    import re
+
+    selected = json.loads(Path(report_path).read_text())["selected"]
+    missing_values = sorted(set(CALIBRATION) - set(selected))
+    if missing_values:
+        raise ValueError(f"{report_path} lacks {missing_values}")
+    edits: dict[str, dict[tuple[str, str], str]] = {}
+    for name, targets in CALIBRATION.items():
+        for file, dotted in targets:
+            edits.setdefault(file, {})[tuple(dotted.split("."))] = _yaml_value(selected[name])
+    diff, writes = [], {}
+    for file, keys in edits.items():
+        path = Path(configs_dir) / file
+        old = path.read_text().splitlines(keepends=True)
+        new, section, done = [], None, set()
+        for line in old:
+            top = re.match(r"^(\w+):", line)
+            if top:
+                section = top.group(1)
+            m = re.match(r"^(\s+)(\w+):(\s*)(\S+)(\s*)(# set from pilot.*\n?)$", line)
+            if m and (section, m.group(2)) in keys:
+                value = keys[(section, m.group(2))]
+                gap = " " * max(1, len(m.group(5)) + len(m.group(4)) - len(value))  # keep the comment column
+                line = f"{m.group(1)}{m.group(2)}:{m.group(3)}{value}{gap}{m.group(6)}"
+                done.add((section, m.group(2)))
+            new.append(line)
+        if done != set(keys):
+            raise ValueError(f"{path}: no '# set from pilot' line for {sorted(set(keys) - done)}")
+        check_calibrated(yaml.safe_load("".join(new)))
+        if new != old:
+            writes[path] = "".join(new)
+            diff += difflib.unified_diff(old, new, fromfile=str(path), tofile=str(path))
+    for path, text in writes.items():  # all files checked first: nothing is written on an error
+        path.write_text(text)
+    return "".join(diff)

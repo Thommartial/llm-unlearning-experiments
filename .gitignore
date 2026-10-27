@@ -20,6 +20,16 @@ data/*
 results/*
 !results/.gitkeep
 !results/fed_sweep.csv
+# revision campaign: only the merged campaign CSVs and the pilot's calibration
+# (not the per-GPU CSVs, scores, .npz, resolved configs, logs, smoke or micro runs)
+!results/revision/
+results/revision/*
+!results/revision/central.csv
+!results/revision/fed_iid.csv
+!results/revision/fed_ext.csv
+!results/revision/lora.csv
+!results/revision/pilot.csv
+!results/revision/pilot_calibration.json
 models/
 checkpoints/
 *.ckpt

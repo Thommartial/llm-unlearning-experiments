@@ -232,3 +232,87 @@ def test_notebooks_are_generated_and_parse():
         if nb_spec["campaign"] != "pilot":
             units = campaign.units(campaign.read_campaign(REVISION / f"{nb_spec['campaign']}.yaml"))
             assert sorted(seeds) == sorted({u.seed for u in units})  # every seed on exactly one GPU
+
+
+SELECTED = {"finetune_lr": 5e-05, "rounds": 5, "rho_factor": 1.0, "lora_finetune_lr": 0.0002,
+            "lora_learning_rate": 1e-05 * 0.0002 / 5e-05}
+
+
+def _calibration(tmp_path, selected=SELECTED):
+    import shutil
+
+    configs = tmp_path / "configs"
+    shutil.copytree(REVISION, configs)
+    report = tmp_path / "pilot_calibration.json"
+    report.write_text(json.dumps({"selected": selected, "measurements": {}, "flags": []}))
+    return configs, report
+
+
+def test_apply_calibration_fills_the_pilot_values(tmp_path):
+    configs, report = _calibration(tmp_path)
+    before = {p.name: p.read_text() for p in configs.iterdir()}
+    diff = campaign.apply_calibration(report, configs)
+    for name in ("central", "fed_iid", "fed_ext", "lora"):
+        raw = campaign.read_campaign(configs / f"{name}.yaml")
+        campaign.check_calibrated(raw)  # every required value is set
+        cfg = load_config(configs / f"{name}.yaml")
+        if name == "lora":
+            assert cfg.unlearn.finetune_lr == 0.0002 and cfg.unlearn.learning_rate == 4e-05  # 6 significant digits
+        else:
+            assert cfg.unlearn.finetune_lr == 5e-05 and cfg.unlearn.learning_rate == 1e-05
+        if name.startswith("fed"):
+            assert cfg.federated.rounds == 5 and isinstance(cfg.federated.rounds, int)
+            assert cfg.federated.rho_factor == 1.0
+        after = (configs / f"{name}.yaml").read_text()
+        changed = [(a, b) for a, b in zip(before[f"{name}.yaml"].splitlines(), after.splitlines(), strict=True)
+                   if a != b]
+        assert changed and all("# set from pilot" in b and b.index("#") == a.index("#") for a, b in changed)
+    for name in ("pilot.yaml", "smoke_cpu.yaml", "micro_tofu_cpu.yaml"):
+        assert (configs / name).read_text() == before[name]
+    assert diff.count("\n+  ") == 1 + 3 + 3 + 2 and "rounds: 5" in diff  # central, fed_iid, fed_ext, lora
+    assert campaign.apply_calibration(report, configs) == ""  # applying again changes nothing
+
+
+def test_apply_calibration_writes_nothing_on_error(tmp_path):
+    configs, report = _calibration(tmp_path, {k: v for k, v in SELECTED.items() if k != "rho_factor"})
+    before = {p.name: p.read_text() for p in configs.iterdir()}
+    with pytest.raises(ValueError, match="rho_factor"):
+        campaign.apply_calibration(report, configs)
+    configs, report = _calibration(tmp_path / "b")
+    lora = configs / "lora.yaml"
+    lora.write_text(lora.read_text().replace("learning_rate: null          # set from pilot",
+                                             "learning_rate: null"))
+    with pytest.raises(ValueError, match="learning_rate"):
+        campaign.apply_calibration(report, configs)
+    assert all((configs / n).read_text() == t for n, t in before.items() if n != "lora.yaml")  # lora is last
+    with pytest.raises(ValueError):
+        campaign._yaml_value("5e-5")
+
+
+def test_apply_calibration_from_the_script_and_the_pilot_report(tmp_path, capsys):
+    from unlearning.pilot import run_pilot
+
+    report = run_pilot(REVISION / "smoke_cpu.yaml", "cpu", tmp_path / "out")
+    configs, _ = _calibration(tmp_path)
+    path = tmp_path / "out" / "pilot_calibration.json"
+    assert _script().main(["--apply-calibration", str(path), "--configs-dir", str(configs)]) == 0
+    assert "+  finetune_lr:" in capsys.readouterr().out
+    cfg = load_config(configs / "fed_iid.yaml")
+    sel = report["selected"]
+    assert (cfg.unlearn.finetune_lr, cfg.federated.rounds, cfg.federated.rho_factor) == (
+        sel["finetune_lr"], sel["rounds"], sel["rho_factor"])
+
+
+def test_gitignore_keeps_only_the_merged_results():
+    import shutil
+    import subprocess
+
+    if shutil.which("git") is None:
+        pytest.skip("git not available")
+    kept = ["central.csv", "fed_iid.csv", "fed_ext.csv", "lora.csv", "pilot.csv", "pilot_calibration.json"]
+    dropped = ["central_gpu0.csv", "scores/central/gpt2_seed0_central.npz", "configs/central/gpt2_seed0_central.json",
+               "smoke/smoke.csv", "micro/micro.csv", "kaggle/01_central/revision_central.zip"]
+
+    def ignored(f):
+        return subprocess.run(["git", "check-ignore", "-q", "--no-index", f"results/revision/{f}"]).returncode == 0
+    assert not any(ignored(f) for f in kept) and all(ignored(f) for f in dropped)
