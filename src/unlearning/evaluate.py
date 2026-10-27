@@ -23,13 +23,20 @@ def _auc(member: np.ndarray, nonmember: np.ndarray) -> float:
 
 
 def mean_loss(model, dataset, cfg, device: str) -> float:
-    """Average cross-entropy loss over a dataset (utility / forget quality)."""
+    """Average cross-entropy loss over a dataset (utility / forget quality).
+
+    On the official-split datasets this is the mean over all scored (answer)
+    tokens, at `eval_batch_size`, so it does not depend on the batch size. The
+    legacy datasets keep the mean of per-batch means at `batch_size`.
+    """
     import torch
     from torch.utils.data import DataLoader
 
     from .data import collate_for
 
     model.eval()
+    if cfg.data.dataset.endswith("_official"):
+        return _token_mean_loss(model, dataset, cfg, device)
     losses = []
     with torch.no_grad():
         for batch in DataLoader(dataset, batch_size=cfg.unlearn.batch_size,
@@ -39,6 +46,24 @@ def mean_loss(model, dataset, cfg, device: str) -> float:
                         labels=batch["labels"].to(device))
             losses.append(float(out.loss))
     return float(np.mean(losses)) if losses else float("nan")
+
+
+def _token_mean_loss(model, dataset, cfg, device: str) -> float:
+    """Token-weighted mean NLL over the scored tokens of `dataset`."""
+    import torch
+    from torch.utils.data import DataLoader
+
+    from .attacks import _token_logprobs
+    from .data import collate_for
+
+    total, n = 0.0, 0
+    with torch.no_grad():
+        for batch in DataLoader(dataset, batch_size=cfg.unlearn.eval_batch_size,
+                                collate_fn=collate_for(dataset)):
+            tok, m = _token_logprobs(model, batch, device)
+            total -= float((tok * m).double().sum())
+            n += int(m.sum())
+    return total / n if n else float("nan")
 
 
 def mia_metrics(scores: dict) -> dict:

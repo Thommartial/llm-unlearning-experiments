@@ -85,12 +85,22 @@ def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr
             _step(out.loss, model, opt, scaler)
 
 
-def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str):
-    """Fine-tune the base model on all members (forget + retain)."""
-    model, _ = build_model_and_tokenizer(cfg)
+def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str, model=None):
+    """Fine-tune the base model (built fresh unless given) on all members (forget + retain)."""
+    if model is None:
+        model, _ = build_model_and_tokenizer(cfg)
     members = ConcatDataset([splits.forget, splits.retain])
     lr = cfg.unlearn.finetune_lr or cfg.unlearn.learning_rate
     train_lm(model, members, cfg, device, cfg.unlearn.finetune_epochs, lr)
+    return model
+
+
+def retrain_base(cfg: ExperimentConfig, splits: Splits, device: str, model=None):
+    """Retrain baseline: fine-tune the base model on the retain set only (same epochs and lr)."""
+    if model is None:
+        model, _ = build_model_and_tokenizer(cfg)
+    lr = cfg.unlearn.finetune_lr or cfg.unlearn.learning_rate
+    train_lm(model, splits.retain, cfg, device, cfg.unlearn.finetune_epochs, lr)
     return model
 
 
