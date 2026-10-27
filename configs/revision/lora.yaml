@@ -22,10 +22,10 @@ data:
   max_new_tokens: 128
 unlearn:
   finetune_epochs: 3
-  finetune_lr: null            # set from pilot (rule 1, LoRA: 1e-4 or 2e-4)
+  finetune_lr: 0.0002          # set from pilot (rule 1, LoRA: 1e-4 or 2e-4)
   train_batch_size: 16
   epochs: 2
-  learning_rate: null          # set from pilot (1e-5 x LoRA fine-tune lr / full fine-tune lr)
+  learning_rate: 0.0001        # set from pilot (1e-5 x LoRA fine-tune lr / full fine-tune lr)
   batch_size: 4
   eval_batch_size: 64
   retain_weight: 1.0

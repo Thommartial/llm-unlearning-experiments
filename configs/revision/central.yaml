@@ -16,7 +16,7 @@ data:
   max_new_tokens: 128
 unlearn:
   finetune_epochs: 3
-  finetune_lr: null            # set from pilot (rule 1: 2e-5 or 5e-5)
+  finetune_lr: 2.0e-05         # set from pilot (rule 1: 2e-5 or 5e-5)
   train_batch_size: 16
   epochs: 2
   learning_rate: 1.0e-5

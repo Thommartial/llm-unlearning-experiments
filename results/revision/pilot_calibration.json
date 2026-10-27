@@ -1,0 +1,178 @@
+{
+  "phases": {
+    "lora_weight_load": {
+      "wall_s": 40.14248311799997,
+      "peak_mem_mib": 2555.52734375,
+      "peak_mem_reserved_mib": 2812.0
+    },
+    "full_finetune_lr2e-05": {
+      "wall_s": 139.59944781599995,
+      "peak_mem_mib": 6849.48486328125,
+      "peak_mem_reserved_mib": 10032.0
+    },
+    "full_finetune_lr5e-05": {
+      "wall_s": 141.60598636099996,
+      "peak_mem_mib": 6842.341796875,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round1": {
+      "wall_s": 46.39429174500003,
+      "peak_mem_mib": 5831.88818359375,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round2": {
+      "wall_s": 47.104717888000096,
+      "peak_mem_mib": 5831.82080078125,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round3": {
+      "wall_s": 46.92582672399999,
+      "peak_mem_mib": 5842.326171875,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round4": {
+      "wall_s": 46.964175092000005,
+      "peak_mem_mib": 5836.41845703125,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round5": {
+      "wall_s": 47.00220861499997,
+      "peak_mem_mib": 5833.78173828125,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round6": {
+      "wall_s": 46.910422242000095,
+      "peak_mem_mib": 5830.6162109375,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round7": {
+      "wall_s": 47.06136727199987,
+      "peak_mem_mib": 5829.4072265625,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fedavg_round8": {
+      "wall_s": 46.92575043000011,
+      "peak_mem_mib": 5828.8076171875,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "fed_retrain": {
+      "wall_s": 332.60896323199995,
+      "peak_mem_mib": 5838.88232421875,
+      "peak_mem_reserved_mib": 10934.0
+    },
+    "client_ga_rho0.5": {
+      "wall_s": 112.9114206700001,
+      "peak_mem_mib": 5836.10546875,
+      "peak_mem_reserved_mib": 14078.0
+    },
+    "client_ga_rho1": {
+      "wall_s": 111.38078508100011,
+      "peak_mem_mib": 5832.52734375,
+      "peak_mem_reserved_mib": 14078.0
+    },
+    "client_ga_rho2": {
+      "wall_s": 109.9823430580002,
+      "peak_mem_mib": 5834.4150390625,
+      "peak_mem_reserved_mib": 14078.0
+    },
+    "lora_finetune_lr0.0001": {
+      "wall_s": 560.3974697950002,
+      "peak_mem_mib": 4200.51708984375,
+      "peak_mem_reserved_mib": 5964.0
+    },
+    "lora_finetune_lr0.0002": {
+      "wall_s": 560.346213756,
+      "peak_mem_mib": 4201.00146484375,
+      "peak_mem_reserved_mib": 8040.0
+    },
+    "lora_ga_sanity": {
+      "wall_s": 60.723813421999694,
+      "peak_mem_mib": 2410.9609375,
+      "peak_mem_reserved_mib": 8046.0
+    },
+    "timing_central": {
+      "wall_s": 1337.989852154
+    },
+    "timing_iid_K5": {
+      "wall_s": 1494.1846665229996
+    }
+  },
+  "measurements": {
+    "lora_weight_load": {
+      "model": "TinyLlama/TinyLlama_v1.1",
+      "forget_loss_base": 2.029587780544149
+    },
+    "full_lr2e-05": {
+      "base_world_facts_loss": 4.947149473742887,
+      "retain_loss": 1.7805259974982435,
+      "world_facts_loss": 6.31006116024452
+    },
+    "full_lr5e-05": {
+      "base_world_facts_loss": 4.947149473742887,
+      "retain_loss": 1.4529056263026292,
+      "world_facts_loss": 6.661562411848984
+    },
+    "rounds3": {
+      "retain_loss": 2.1481917457216864,
+      "central_retain_loss": 1.7805259974982435,
+      "update_norm": 1.8864184979919236,
+      "within": false
+    },
+    "rounds5": {
+      "retain_loss": 2.052796137520801,
+      "central_retain_loss": 1.7805259974982435,
+      "update_norm": 1.7771333437746266,
+      "within": false
+    },
+    "rounds8": {
+      "retain_loss": 1.9578262835864584,
+      "central_retain_loss": 1.7805259974982435,
+      "update_norm": 1.6875898531030489,
+      "within": true
+    },
+    "rho_factor0.5": {
+      "rho": 0.8437949265515244,
+      "forget_loss_post_recovery": 2.169773840792685,
+      "forget_loss_fed_retrain": 2.2491822423529793,
+      "exceeds": false
+    },
+    "rho_factor1": {
+      "rho": 1.6875898531030489,
+      "forget_loss_post_recovery": 2.161104876239604,
+      "forget_loss_fed_retrain": 2.2491822423529793,
+      "exceeds": false
+    },
+    "rho_factor2": {
+      "rho": 3.3751797062060978,
+      "forget_loss_post_recovery": 2.3247301719680853,
+      "forget_loss_fed_retrain": 2.2491822423529793,
+      "exceeds": true
+    },
+    "lora_lr0.0001": {
+      "base_world_facts_loss": 2.7009735071559366,
+      "retain_loss": 2.0955047579328836,
+      "world_facts_loss": 2.702180945320517
+    },
+    "lora_lr0.0002": {
+      "base_world_facts_loss": 2.7009735071559366,
+      "retain_loss": 2.0949879358142236,
+      "world_facts_loss": 2.7042765146398744
+    },
+    "lora_ga_sanity": {
+      "learning_rate": 0.0001,
+      "forget_loss_before": 2.136129556656916,
+      "forget_loss_after": 2.1413809477317183,
+      "rises": true
+    }
+  },
+  "selected": {
+    "finetune_lr": 2e-05,
+    "rounds": 8,
+    "rho_factor": 2.0,
+    "lora_finetune_lr": 0.0002,
+    "lora_learning_rate": 0.0001
+  },
+  "flags": [
+    "full: no rate keeps the world-facts loss within 10% of the base model; kept 2e-05 (smallest world-facts loss)"
+  ]
+}

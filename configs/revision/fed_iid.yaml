@@ -16,7 +16,7 @@ data:
   max_new_tokens: 128
 unlearn:
   finetune_epochs: 3
-  finetune_lr: null            # set from pilot (rule 1: 2e-5 or 5e-5)
+  finetune_lr: 2.0e-05         # set from pilot (rule 1: 2e-5 or 5e-5)
   train_batch_size: 16
   epochs: 2
   learning_rate: 1.0e-5
@@ -30,10 +30,10 @@ attack:
 federated:
   num_clients: 5
   sharding: iid
-  rounds: null                 # set from pilot (rule 2: 3, 5 or 8)
+  rounds: 8                    # set from pilot (rule 2: 3, 5 or 8)
   local_epochs: 1
   client_unlearn_epochs: 2
-  rho_factor: null             # set from pilot (rule 3: 0.5, 1 or 2)
+  rho_factor: 2.0              # set from pilot (rule 3: 0.5, 1 or 2)
   recovery_rounds: 2
   accumulate_on_device: true
 campaign:
