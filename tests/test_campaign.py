@@ -232,6 +232,11 @@ def test_notebooks_are_generated_and_parse():
         # every subprocess can import the package (sys.path.insert reaches the kernel only)
         assert 'ENV = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [f"{REPO}/src"' in code[1]
         assert any('"pip", "install", "-q", "-e", ".", "--no-deps"' in c for c in code)
+        # Kaggle's torchao is too old for peft: removed after every install, and checked in a fresh interpreter
+        install = next(c for c in code if '"pip", "install", "-q", "-r"' in c)
+        assert install.index('"pip", "uninstall", "-y", "-q", "torchao"') > install.rindex('"pip", "install"')
+        assert gen.VERSIONS in install and "assert not is_torchao_available()" in gen.VERSIONS
+        assert "assert versions.returncode == 0" in install
         calls = [n for cell in code for n in ast.walk(ast.parse(cell)) if isinstance(n, ast.Call)
                  and ast.unparse(n.func) in ("subprocess.run", "subprocess.Popen")
                  and ast.unparse(n.args[0]).startswith("[sys.executable")]

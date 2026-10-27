@@ -17,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1] / "notebooks" / "revision"
 REPO_URL = "https://github.com/Thommartial/llm-unlearning-experiments.git"
 # versions the code was tested with locally; torch stays Kaggle's CUDA build
 PINS = ["transformers==5.9.0", "peft==0.19.1", "datasets==4.8.5", "accelerate==1.13.0"]
+# run in a fresh interpreter after the installs: the remaining versions, and peft must not see torchao
+VERSIONS = ("import importlib.metadata as m; from peft.import_utils import is_torchao_available; "
+            "print({p: m.version(p) for p in ('torch', 'transformers', 'peft')}); "
+            "print('torchao seen by peft:', is_torchao_available()); assert not is_torchao_available()")
 
 NOTEBOOKS = {
     "00_pilot": {"campaign": "pilot", "gpu_seeds": {0: None},
@@ -78,7 +82,12 @@ print(subprocess.run(["git", "log", "-1", "--oneline"], capture_output=True, tex
 ENV = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [f"{REPO}/src", os.environ.get("PYTHONPATH")]))}"""),
         _code(f"""subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt", "peft",
                 {", ".join(repr(p) for p in PINS)}], check=True)
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".", "--no-deps"], check=True)  # the package itself"""),
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".", "--no-deps"], check=True)  # the package itself
+# Kaggle ships torchao 0.10, which peft rejects when it builds LoRA layers; nothing here uses torchao
+subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchao"], check=True)
+versions = subprocess.run([sys.executable, "-c", {VERSIONS!r}], capture_output=True, text=True, env=ENV)
+print(versions.stdout, versions.stderr)
+assert versions.returncode == 0, "the version check failed (is torchao still visible to peft?)" """),
         _code("""sys.path.insert(0, "src")
 import torch, transformers, peft
 n_gpu = torch.cuda.device_count()
