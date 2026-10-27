@@ -1,0 +1,45 @@
+# Federated extensions (ANALYSIS_PLAN §6 H6, §8): GPT-2, seeds 0-2; non-IID by author with
+# K = 5, and iid with K = 3 and K = 10.
+name: fed_ext
+seed: 0
+output_dir: results/revision
+device: auto
+model:
+  name: gpt2
+  precision: fp16_amp
+data:
+  dataset: tofu_official
+  max_length: 128
+  outlier_fraction: 0.3
+  tofu_metrics: true
+  max_new_tokens: 128
+unlearn:
+  finetune_epochs: 3
+  finetune_lr: null            # set from pilot (rule 1: 2e-5 or 5e-5)
+  train_batch_size: 16
+  epochs: 2
+  learning_rate: 1.0e-5
+  batch_size: 4
+  eval_batch_size: 64
+  retain_weight: 1.0
+  beta: 0.1
+attack:
+  min_k: 0.2
+  grad_alignment: true
+federated:
+  num_clients: 5
+  sharding: iid
+  rounds: null                 # set from pilot (rule 2: 3, 5 or 8)
+  local_epochs: 1
+  client_unlearn_epochs: 2
+  rho_factor: null             # set from pilot (rule 3: 0.5, 1 or 2)
+  recovery_rounds: 2
+  accumulate_on_device: true
+campaign:
+  models: [gpt2]
+  seeds: [0, 1, 2]
+  requires: [unlearn.finetune_lr, federated.rounds, federated.rho_factor]
+  variants:
+    - {name: by_author_K5, kind: federated, federated: {sharding: by_author, num_clients: 5}}
+    - {name: iid_K3, kind: federated, federated: {sharding: iid, num_clients: 3}}
+    - {name: iid_K10, kind: federated, federated: {sharding: iid, num_clients: 10}}

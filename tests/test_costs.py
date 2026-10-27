@@ -13,7 +13,7 @@ from unlearning.config import load_config
 def test_phase_on_cpu():
     with costs.phase("cpu") as c:
         sum(range(10_000))
-    assert c["wall_s"] > 0 and c["peak_mem_mib"] is None
+    assert c["wall_s"] > 0 and c["peak_mem_mib"] is None and c["peak_mem_reserved_mib"] is None
     with pytest.raises(RuntimeError), costs.phase("cpu"), costs.phase("cpu"):
         pass
     with pytest.raises(ValueError), costs.phase("cpu"):
@@ -24,12 +24,14 @@ def test_phase_on_cpu():
 
 
 def test_combine_and_columns():
-    a, b = {"wall_s": 1.0, "peak_mem_mib": 10.0}, {"wall_s": 2.5, "peak_mem_mib": 30.0}
-    assert costs.combine(a, b) == {"wall_s": 3.5, "peak_mem_mib": 30.0}
-    assert costs.combine(a, {"wall_s": 1.0, "peak_mem_mib": None})["peak_mem_mib"] == 10.0
+    a = {"wall_s": 1.0, "peak_mem_mib": 10.0, "peak_mem_reserved_mib": 40.0}
+    b = {"wall_s": 2.5, "peak_mem_mib": 30.0, "peak_mem_reserved_mib": 32.0}
+    assert costs.combine(a, b) == {"wall_s": 3.5, "peak_mem_mib": 30.0, "peak_mem_reserved_mib": 40.0}
+    none = {"wall_s": 1.0, "peak_mem_mib": None, "peak_mem_reserved_mib": None}
+    assert costs.combine(a, none)["peak_mem_mib"] == 10.0
     assert costs.columns({"finetune": a, "alignment": None}) == {
-        "time_s_finetune": 1.0, "peak_mem_mib_finetune": 10.0, "time_s_alignment": None,
-        "peak_mem_mib_alignment": None}
+        "time_s_finetune": 1.0, "peak_mem_mib_finetune": 10.0, "peak_mem_reserved_mib_finetune": 40.0,
+        "time_s_alignment": None, "peak_mem_mib_alignment": None, "peak_mem_reserved_mib_alignment": None}
 
 
 def test_communication():
@@ -68,9 +70,10 @@ def test_run_central_on_cuda_records_gpu_costs():
     cfg.unlearn.epochs = 1
     with costs.phase("cuda") as c:
         x = torch.ones(1024, 1024, device="cuda")
-    assert c["peak_mem_mib"] >= x.numel() * 4 / 2**20
+    assert c["peak_mem_mib"] >= x.numel() * 4 / 2**20 and c["peak_mem_reserved_mib"] >= c["peak_mem_mib"]
     rows = central.central_rows(cfg, central.run_central(cfg, "cuda", methods=["retrain", "gradient_ascent"]))
     for r in rows:
         assert r["gpu_name"] != "cpu" and r["cuda_version"]
-        assert all(r[f"peak_mem_mib_{p}"] > 0 and np.isfinite(r[f"time_s_{p}"])
+        assert all(r[f"peak_mem_mib_{p}"] > 0 and r[f"peak_mem_reserved_mib_{p}"] >= r[f"peak_mem_mib_{p}"]
+                   and np.isfinite(r[f"time_s_{p}"])
                    for p in ("base_scoring", "finetune", "pre_eval", "method", "post_eval", "alignment"))

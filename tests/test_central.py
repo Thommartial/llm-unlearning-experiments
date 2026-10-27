@@ -240,7 +240,8 @@ def test_cost_and_environment_columns(full_run):
     rows = central.central_rows(cfg, res)
     phases = ("base_scoring", "finetune", "pre_eval", "method", "post_eval", "alignment")
     for r in rows:
-        assert all(r[f"time_s_{p}"] > 0 and r[f"peak_mem_mib_{p}"] is None for p in phases)  # CPU: no GPU peak
+        assert all(r[f"time_s_{p}"] > 0 and r[f"peak_mem_mib_{p}"] is None and r[f"peak_mem_reserved_mib_{p}"] is None
+                   for p in phases)  # CPU: no GPU peak
         assert (r["gpu_name"], r["torch_version"], r["cuda_version"]) == ("cpu", torch.__version__, torch.version.cuda)
     assert len({r["time_s_finetune"] for r in rows}) == 1  # shared phase
     assert len({r["time_s_method"] for r in rows}) == len(central.METHODS)

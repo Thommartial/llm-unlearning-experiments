@@ -102,10 +102,18 @@ def load_eval_sets(cfg, tokenizer, splits=None) -> dict[str, EvalSet] | None:
     if not cfg.data.tofu_metrics:
         return None
     if cfg.data.dataset == "tofu_official":
-        return _tofu_sets(cfg, tokenizer)
-    if cfg.data.dataset == "synthetic_official":
-        return _synthetic_sets(cfg, splits)
-    return None
+        sets = _tofu_sets(cfg, tokenizer)
+    elif cfg.data.dataset == "synthetic_official":
+        sets = _synthetic_sets(cfg, splits)
+    else:
+        return None
+    n = cfg.data.max_samples
+    if n:  # the first records of each set, as for the splits (`data.max_samples`)
+        for es in sets.values():
+            es.answer = es.answer.head(n)
+            es.paraphrased = None if es.paraphrased is None else es.paraphrased.head(n)
+            es.perturbed = [p.head(n) for p in es.perturbed]
+    return sets
 
 
 def _tofu_sets(cfg, tokenizer) -> dict[str, EvalSet]:

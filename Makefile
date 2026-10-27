@@ -37,6 +37,15 @@ figures:  ## Regenerate figures from results
 fed-figures:  ## Federated paper figures from results/fed_sweep.csv
 > python scripts/make_fed_figures.py --csv results/fed_sweep.csv --out figures
 
+revision-smoke:  ## Revision paths offline on CPU: campaign units + pilot, tiny models (< 2 min)
+> rm -rf results/revision/smoke
+> python scripts/run_revision.py --campaign smoke --out-dir results/revision/smoke
+> python scripts/run_revision.py --campaign pilot --config configs/revision/smoke_cpu.yaml --out-dir results/revision/smoke
+
+revision-micro:  ## Revision path on real TOFU, CPU: DistilGPT-2, 4 x 50 records (central + federated)
+> rm -rf results/revision/micro
+> python scripts/run_revision.py --campaign micro --out-dir results/revision/micro
+
 lint:  ## Lint
 > ruff check src scripts tests
 
@@ -46,4 +55,5 @@ test:  ## Unit tests
 clean:  ## Remove caches and generated artifacts
 > rm -rf .pytest_cache .ruff_cache **/__pycache__ results/* && touch results/.gitkeep
 
-.PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures fed-figures lint test clean
+.PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures fed-figures revision-smoke \
+        revision-micro lint test clean

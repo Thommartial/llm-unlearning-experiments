@@ -83,10 +83,17 @@ def build_model_and_tokenizer(cfg: ExperimentConfig):
     tok = AutoTokenizer.from_pretrained(cfg.model.name)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    if cfg.model.lora is None:
-        model = AutoModelForCausalLM.from_pretrained(cfg.model.name)
-    else:
-        model = AutoModelForCausalLM.from_pretrained(cfg.model.name, dtype=getattr(torch, lora_settings(cfg)["base_dtype"]))
+    try:
+        if cfg.model.lora is None:
+            model = AutoModelForCausalLM.from_pretrained(cfg.model.name)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(cfg.model.name,
+                                                         dtype=getattr(torch, lora_settings(cfg)["base_dtype"]))
+    except Exception as e:
+        raise RuntimeError(
+            f"Could not load the weights of {cfg.model.name} ({type(e).__name__}: {e}). Check internet access and "
+            f"disk space; TinyLlama v1.1 ships pytorch_model.bin, which transformers reads with torch.load."
+        ) from e
     return _with_lora(model, cfg), tok
 
 

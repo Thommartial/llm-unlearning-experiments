@@ -24,7 +24,7 @@ class DataConfig:
     dataset: str = "tofu"        # "tofu" | "tofu_official" | "synthetic" | "synthetic_official"
     forget_fraction: float = 0.05
     holdout_fraction: float = 0.2
-    max_samples: int | None = None
+    max_samples: int | None = None  # tofu: first n QAs; official: first n records of each split and TOFU set
     max_length: int = 128
     # synthetic-only knobs (used for offline tests):
     n_synthetic: int = 240

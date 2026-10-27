@@ -1,0 +1,57 @@
+# Offline smoke test of every revision path (CPU, tiny untrained models, synthetic TOFU-like data):
+# central, federated iid and by-author, LoRA on a tiny Llama, and the pilot with small grids.
+#   python scripts/run_revision.py --campaign smoke
+#   python scripts/run_revision.py --campaign pilot --config configs/revision/smoke_cpu.yaml
+name: smoke
+seed: 0
+output_dir: results/revision
+device: cpu
+model:
+  name: tiny
+data:
+  dataset: synthetic_official
+  n_synthetic: 160
+  seq_len: 24
+  vocab_size: 128
+  forget_fraction: 0.25
+  holdout_fraction: 0.25
+  outlier_fraction: 0.3
+  max_new_tokens: 8
+unlearn:
+  finetune_epochs: 1
+  finetune_lr: 5.0e-4
+  train_batch_size: 8
+  epochs: 1
+  learning_rate: 5.0e-4
+  batch_size: 8
+attack:
+  grad_alignment: true
+federated:
+  num_clients: 3
+  sharding: iid
+  rounds: 2
+  local_epochs: 1
+  client_unlearn_epochs: 1
+  rho_factor: 1.0
+  recovery_rounds: 1
+campaign:
+  models: [tiny]
+  seeds: [0]
+  variants:
+    - {name: central, kind: central}
+    - {name: iid_K3, kind: federated}
+    - {name: by_author_K3, kind: federated, federated: {sharding: by_author}}
+    - {name: lora, kind: central, models: [tiny_llama], model: {lora: {}}}
+pilot:
+  model: tiny
+  seed: 0
+  epochs: 1
+  finetune_lrs: [5.0e-4, 1.0e-3]
+  world_facts_tolerance: 0.10
+  rounds: [1, 2]
+  retain_tolerance: 0.10
+  rho_factors: [0.5, 1.0]
+  lora_model: tiny_llama
+  lora: {}
+  lora_lrs: [5.0e-4, 1.0e-3]
+  base_unlearn_lr: 5.0e-4

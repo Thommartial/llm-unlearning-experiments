@@ -1,0 +1,41 @@
+# Micro run on real TOFU (CPU): DistilGPT-2, the first 50 records of forget10, retain, each
+# non-member set and each TOFU evaluation set (200 QAs in the splits); 1 epoch, 2 FedAvg
+# rounds, short generations. Checks the real-data path end to end, not the numbers.
+#   python scripts/run_revision.py --campaign micro
+name: micro
+seed: 0
+output_dir: results/revision
+device: cpu
+model:
+  name: distilgpt2
+data:
+  dataset: tofu_official
+  max_length: 128
+  max_samples: 50
+  outlier_fraction: 0.3
+  tofu_metrics: true
+  max_new_tokens: 32
+unlearn:
+  finetune_epochs: 1
+  finetune_lr: 5.0e-5
+  train_batch_size: 16
+  epochs: 1
+  learning_rate: 1.0e-5
+  batch_size: 4
+  eval_batch_size: 64
+attack:
+  grad_alignment: true
+federated:
+  num_clients: 3
+  sharding: iid
+  rounds: 2
+  local_epochs: 1
+  client_unlearn_epochs: 1
+  rho_factor: 1.0
+  recovery_rounds: 1
+campaign:
+  models: [distilgpt2]
+  seeds: [0]
+  variants:
+    - {name: central, kind: central}
+    - {name: iid_K3, kind: federated}

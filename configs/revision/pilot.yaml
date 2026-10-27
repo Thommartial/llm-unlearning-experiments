@@ -1,0 +1,53 @@
+# Pilot (ANALYSIS_PLAN §7): GPT-2 seed 0 alone in one process. Calibrates the fine-tuning
+# rate, the FedAvg rounds and the unlearning radius, the LoRA rate (TinyLlama), checks that
+# GA moves the LoRA forget loss, then times one central and one federated run with the
+# selected values. None of its numbers appear in the paper.
+name: pilot
+seed: 0
+output_dir: results/revision
+device: auto
+model:
+  name: gpt2
+  precision: fp16_amp
+data:
+  dataset: tofu_official
+  max_length: 128
+  outlier_fraction: 0.3
+  tofu_metrics: true
+  max_new_tokens: 128
+unlearn:
+  finetune_epochs: 3
+  finetune_lr: null            # chosen by the pilot from pilot.finetune_lrs
+  train_batch_size: 16
+  epochs: 2
+  learning_rate: 1.0e-5
+  batch_size: 4
+  eval_batch_size: 64
+  retain_weight: 1.0
+  beta: 0.1
+attack:
+  min_k: 0.2
+  grad_alignment: true
+federated:
+  num_clients: 5
+  sharding: iid
+  rounds: null                 # chosen by the pilot from pilot.rounds
+  local_epochs: 1
+  client_unlearn_epochs: 2
+  rho_factor: null             # chosen by the pilot from pilot.rho_factors
+  recovery_rounds: 2
+  accumulate_on_device: true
+pilot:
+  model: gpt2
+  seed: 0
+  epochs: 3                      # rule 1: retain loss after 3 epochs
+  finetune_lrs: [2.0e-5, 5.0e-5]
+  world_facts_tolerance: 0.10    # world-facts loss at most 10% above the base model
+  rounds: [3, 5, 8]
+  retain_tolerance: 0.10         # FedAvg retain loss within 10% of the central model
+  rho_factors: [0.5, 1.0, 2.0]
+  lora_model: TinyLlama/TinyLlama_v1.1
+  lora: {r: 16, alpha: 32, dropout: 0.05, target_modules: [q_proj, k_proj, v_proj, o_proj], base_dtype: float16,
+         gradient_checkpointing: true}
+  lora_lrs: [1.0e-4, 2.0e-4]
+  base_unlearn_lr: 1.0e-5        # LoRA unlearning rate = this x LoRA rate / full rate

@@ -82,6 +82,11 @@ class QADataset(Dataset):
         return {"input_ids": ids, "attention_mask": torch.ones_like(ids),
                 "labels": self.labels[idx]}
 
+    def head(self, n: int) -> QADataset:
+        """The first `n` records (whole authors when `n` is a multiple of 20)."""
+        return QADataset(self.input_ids[:n], self.labels[:n], self.row_ids[:n], self.author_ids[:n],
+                         self.questions[:n], self.answers[:n], self.pad_token_id)
+
 
 @dataclass
 class Splits:
@@ -288,16 +293,28 @@ def _synthetic_official(cfg: ExperimentConfig) -> Splits:
     )
 
 
+def _capped(splits: Splits, n: int | None) -> Splits:
+    """Official splits cut to the first `n` records of forget, retain and each
+    non-member set (`data.max_samples`, for quick CPU runs)."""
+    if not n:
+        return splits
+    splits.forget, splits.retain = splits.forget.head(n), splits.retain.head(n)
+    splits.nonmembers = {k: v.head(n) for k, v in splits.nonmembers.items()}
+    splits.holdout = splits.nonmembers["primary"]
+    splits.forget_is_outlier = splits.forget_is_outlier[:n]
+    return splits
+
+
 def load_splits(cfg: ExperimentConfig, tokenizer=None) -> Splits:
     """Return forget/retain/holdout splits for the configured dataset."""
     if cfg.data.dataset == "synthetic":
         return _synthetic(cfg)
     if cfg.data.dataset == "synthetic_official":
-        return _synthetic_official(cfg)
+        return _capped(_synthetic_official(cfg), cfg.data.max_samples)
     if cfg.data.dataset in ("tofu", "tofu_official"):
         if tokenizer is None:
             raise ValueError("TOFU requires a tokenizer.")
         if cfg.data.dataset == "tofu_official":
-            return _tofu_official(cfg, tokenizer)
+            return _capped(_tofu_official(cfg, tokenizer), cfg.data.max_samples)
         return _tofu(cfg, tokenizer)
     raise ValueError(f"Unknown dataset '{cfg.data.dataset}'.")
