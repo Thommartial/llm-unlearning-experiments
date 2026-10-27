@@ -21,6 +21,7 @@ def _cfg(dataset: str = "synthetic_official"):
     cfg.data.forget_fraction = 0.2
     cfg.data.holdout_fraction = 0.2
     cfg.unlearn.epochs = 1
+    cfg.data.max_new_tokens = 8
     return cfg
 
 
@@ -60,10 +61,15 @@ def test_legacy_loss_unchanged():
 
 
 def _fresh(cfg, method: str):
-    """The per-method pipeline that run_central replaces: build, fine-tune (or not), train."""
+    """The per-method pipeline that run_central replaces: build, fine-tune (or not), train.
+    Scored one attack at a time with `score_dataset`; ref_calibrated against a fresh base model."""
     set_seed(cfg.seed)
     model, tok = unlearn.build_model_and_tokenizer(cfg)
     splits = data.load_splits(cfg, tok)
+    sets = {"forget": splits.forget, **splits.nonmembers}
+    loss_cfg = replace(cfg, attack=replace(cfg.attack, method="loss_threshold"))
+    with torch.random.fork_rng(devices=[]):
+        base = {k: attacks.score_dataset(model, ds, loss_cfg, "cpu") for k, ds in sets.items()}
     if method == "retrain":
         set_seed(cfg.seed)
         unlearn.retrain_base(cfg, splits, "cpu", model=model)
@@ -71,10 +77,11 @@ def _fresh(cfg, method: str):
         unlearn.finetune_base(cfg, splits, "cpu", model=model)
         set_seed(cfg.seed)
         unlearn.apply_unlearning(model, splits, replace(cfg, unlearn=replace(cfg.unlearn, method=method)), "cpu")
-    sets = {"forget": splits.forget, **splits.nonmembers}
-    return {a: {k: attacks.score_dataset(model, ds, replace(cfg, attack=replace(cfg.attack, method=a)), "cpu")
-                for k, ds in sets.items()}
-            for a in central.ATTACKS}
+    out = {a: {k: attacks.score_dataset(model, ds, replace(cfg, attack=replace(cfg.attack, method=a)), "cpu")
+               for k, ds in sets.items()}
+           for a in ("loss_threshold", "min_k_prob")}
+    out["ref_calibrated"] = {k: out["loss_threshold"][k] - base[k] for k in sets}
+    return out
 
 
 @pytest.fixture(scope="module")
@@ -102,9 +109,9 @@ def test_method_result_independent_of_other_methods(full_run):
 
 
 def test_finetune_and_pre_scoring_run_once(monkeypatch):
-    calls = {"train": 0, "score": 0, "memorisation": 0}
-    originals = {"train": (unlearn, "train_lm"), "score": (attacks, "score_dataset"),
-                 "memorisation": (attacks, "memorisation_scores")}
+    calls = {"train": 0, "score": 0, "single": 0, "memorisation": 0}
+    originals = {"train": (unlearn, "train_lm"), "score": (attacks, "score_all"),
+                 "single": (attacks, "score_dataset"), "memorisation": (attacks, "memorisation_scores")}
 
     def counted(key):
         module, name = originals[key]
@@ -119,8 +126,9 @@ def test_finetune_and_pre_scoring_run_once(monkeypatch):
         counted(key)
     res = central.run_central(_cfg(), "cpu")
     assert calls["train"] == 2  # one fine-tune + one retrain
-    # base + pre + one per method, each: every attack on forget and both non-member sets
-    assert calls["score"] == len(central.ATTACKS) * 3 * (2 + len(central.METHODS))
+    # base + pre + one per method, each: one pass (all attacks) on forget and both non-member sets
+    assert calls["score"] == 3 * (2 + len(central.METHODS))
+    assert calls["single"] == 0
     assert calls["memorisation"] == 1  # the legacy forget tag; the other tags reuse scores
     assert set(res["post"]) == set(central.METHODS)
 
@@ -161,3 +169,66 @@ def test_rows_and_unknown_method(full_run):
     assert all(by_key[("retrain", a, nm)]["gap_post"] == 0 for a in central.ATTACKS for nm in res["nonmember_sets"])
     with pytest.raises(ValueError):
         central.run_central(cfg, "cpu", methods=["finetune"])
+
+
+def test_update_signal_columns(full_run, tmp_path):
+    from unlearning import update_attacks
+
+    cfg, res = full_run
+    rows = central.central_rows(cfg, res)
+    for r in rows:
+        pre, post = res["pre"]["scores"][r["attack"]], res["post"][r["method"]]["scores"][r["attack"]]
+        change = update_attacks.score_change({k: pre[k].numpy() for k in ("forget", r["nonmember"])},
+                                             {k: post[k].numpy() for k in ("forget", r["nonmember"])})
+        assert r["auc_score_change"] == evaluate._auc(change["forget"], change[r["nonmember"]])
+        assert 0 <= r["tpr1_score_change"] <= 1
+        if r["method"] == "retrain":  # no Δθ from the fine-tuned model
+            assert r["auc_grad_align"] is None and r["delta_norm"] is None
+        else:
+            assert all(np.isfinite(r[k]) for k in ("auc_grad_align", "auc_grad_align_random", "tpr1_grad_align",
+                                                   "tpr1_grad_align_random", "delta_norm"))
+            assert r["delta_norm"] > 0
+    for method in ("gradient_ascent", "gradient_difference", "npo"):  # white-box: one value per method
+        align = {(r["auc_grad_align"], r["auc_grad_align_random"]) for r in rows
+                 if r["method"] == method and r["nonmember"] == "primary"}
+        assert len(align) == 1
+    path = tmp_path / "scores.npz"
+    central.save_scores(res, path)
+    z = np.load(path)
+    s = res["post"]["npo"]["alignment"]["scores"]
+    assert np.array_equal(z["post_npo__grad_align__forget"], s["delta"]["forget"].numpy())
+    assert np.array_equal(z["post_npo__grad_align_random__holdout10"], s["random"]["holdout10"].numpy())
+    assert "post_retrain__grad_align__forget" not in z
+
+
+def test_alignment_uses_delta_from_finetuned_snapshot(monkeypatch):
+    from unlearning import update_attacks
+
+    seen = {}
+    original = update_attacks.parameter_delta
+
+    def wrapper(model, pre_state, *a, **k):
+        delta = original(model, pre_state, *a, **k)
+        seen["post"] = {n: p.detach().clone() for n, p in model.named_parameters()}
+        seen["pre"] = {n: pre_state[n].clone() for n in delta}
+        seen["delta"] = delta
+        return delta
+    monkeypatch.setattr(update_attacks, "parameter_delta", wrapper)
+    cfg = _cfg()
+    res = central.run_central(cfg, "cpu", methods=["gradient_ascent"])
+    set_seed(cfg.seed)
+    model, _ = unlearn.build_model_and_tokenizer(cfg)
+    unlearn.finetune_base(cfg, data.load_splits(cfg), "cpu", model=model)
+    for n, p in model.named_parameters():
+        assert torch.equal(seen["pre"][n], p.detach())  # θ_pre = the fine-tuned model
+        assert torch.equal(seen["delta"][n], seen["post"][n] - seen["pre"][n])
+    assert res["post"]["gradient_ascent"]["alignment"]["delta_norm"] == update_attacks._norm(seen["delta"])
+
+
+def test_grad_alignment_can_be_switched_off():
+    cfg = _cfg()
+    cfg.attack.grad_alignment = False
+    res = central.run_central(cfg, "cpu", methods=["gradient_ascent"])
+    assert "alignment" not in res["post"]["gradient_ascent"]
+    rows = central.central_rows(cfg, res)
+    assert all(r["auc_grad_align"] is None and r["auc_score_change"] is not None for r in rows)

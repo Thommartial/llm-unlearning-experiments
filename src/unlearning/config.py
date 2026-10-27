@@ -28,6 +28,9 @@ class DataConfig:
     seq_len: int = 32
     vocab_size: int = 256
     outlier_fraction: float = 0.3
+    # TOFU metrics (official splits only): truth ratio, ROUGE-L, forget quality, model utility
+    tofu_metrics: bool = True
+    max_new_tokens: int = 128        # generation for ROUGE-L
 
 
 @dataclass
@@ -48,6 +51,8 @@ class UnlearnConfig:
 class AttackConfig:
     method: str = "loss_threshold"   # loss_threshold | min_k_prob
     min_k: float = 0.2
+    # central runs: white-box gradient alignment with Δθ for GA, GD and NPO (update_attacks)
+    grad_alignment: bool = True
 
 
 @dataclass

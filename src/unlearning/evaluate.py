@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 
 
 def _auc(member: np.ndarray, nonmember: np.ndarray) -> float:
@@ -20,6 +20,19 @@ def _auc(member: np.ndarray, nonmember: np.ndarray) -> float:
     y = np.concatenate([np.ones(len(member)), np.zeros(len(nonmember))])
     s = np.concatenate([member, nonmember])
     return float(roc_auc_score(y, s))
+
+
+def tpr_at_fpr(member: np.ndarray, nonmember: np.ndarray, fpr: float) -> float:
+    """Largest TPR on the ROC curve with FPR <= `fpr` (member=1); NaN-safe."""
+    member = np.asarray(member, dtype=float)
+    nonmember = np.asarray(nonmember, dtype=float)
+    member = member[np.isfinite(member)]
+    nonmember = nonmember[np.isfinite(nonmember)]
+    if len(member) == 0 or len(nonmember) == 0:
+        return float("nan")
+    y = np.concatenate([np.ones(len(member)), np.zeros(len(nonmember))])
+    fprs, tprs, _ = roc_curve(y, np.concatenate([member, nonmember]), drop_intermediate=False)
+    return float(tprs[fprs <= fpr].max())
 
 
 def mean_loss(model, dataset, cfg, device: str) -> float:

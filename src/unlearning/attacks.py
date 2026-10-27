@@ -28,21 +28,27 @@ def _token_logprobs(model, batch: dict[str, torch.Tensor], device: str):
     return tok, (target[:, :-1] != -100).to(mask.dtype)
 
 
-def sequence_avg_logprob(model, batch, device: str) -> torch.Tensor:
-    """Mean per-token log-prob for each sequence [B] (higher = more memorised)."""
-    tok, m = _token_logprobs(model, batch, device)
+def _mean_of(tok, m) -> torch.Tensor:
     return (tok * m).sum(-1) / m.sum(-1).clamp(min=1)
 
 
-def min_k_score(model, batch, device: str, k: float) -> torch.Tensor:
-    """Min-K%% Prob score: mean of the lowest-k fraction of token log-probs [B]."""
-    tok, m = _token_logprobs(model, batch, device)
+def _min_k_of(tok, m, k: float) -> torch.Tensor:
     scores = []
     for row, rmask in zip(tok, m, strict=False):
         vals = row[rmask.bool()]
         n = max(1, int(k * vals.numel()))
         scores.append(torch.topk(vals, n, largest=False).values.mean())
     return torch.stack(scores)
+
+
+def sequence_avg_logprob(model, batch, device: str) -> torch.Tensor:
+    """Mean per-token log-prob for each sequence [B] (higher = more memorised)."""
+    return _mean_of(*_token_logprobs(model, batch, device))
+
+
+def min_k_score(model, batch, device: str, k: float) -> torch.Tensor:
+    """Min-K%% Prob score: mean of the lowest-k fraction of token log-probs [B]."""
+    return _min_k_of(*_token_logprobs(model, batch, device), k)
 
 
 @torch.no_grad()
@@ -59,6 +65,31 @@ def score_dataset(model, dataset, cfg: ExperimentConfig, device: str) -> torch.T
         else:  # loss_threshold: higher avg log-prob (lower loss) => member
             out.append(sequence_avg_logprob(model, batch, device))
     return torch.cat(out).cpu()
+
+
+@torch.no_grad()
+def score_all(model, dataset, cfg: ExperimentConfig, device: str) -> dict[str, torch.Tensor]:
+    """Loss and Min-K scores per record from one forward pass per batch.
+
+    Gives the same values as `score_dataset` for each attack. The
+    reference-calibrated score needs the base model's loss scores, so it is
+    derived by the caller (`ref_calibrated`).
+    """
+    model.eval()
+    loader = torch.utils.data.DataLoader(
+        dataset, batch_size=cfg.unlearn.eval_batch_size, collate_fn=collate_for(dataset)
+    )
+    out = {"loss_threshold": [], "min_k_prob": []}
+    for batch in loader:
+        tok, m = _token_logprobs(model, batch, device)
+        out["loss_threshold"].append(_mean_of(tok, m))
+        out["min_k_prob"].append(_min_k_of(tok, m, cfg.attack.min_k))
+    return {a: torch.cat(v).cpu() for a, v in out.items()}
+
+
+def ref_calibrated(target_loss_scores: torch.Tensor, base_loss_scores: torch.Tensor) -> torch.Tensor:
+    """Reference-calibrated score: target minus base-model mean log-prob per record."""
+    return target_loss_scores - base_loss_scores
 
 
 def run_attack(model, splits: Splits, cfg: ExperimentConfig, device: str) -> dict:
