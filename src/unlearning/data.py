@@ -11,10 +11,13 @@ Padding is handled correctly: real attention masks are kept, and label
 positions that correspond to padding are set to -100 so they are ignored by
 the loss and by the membership scores.
 
-The `tofu_official` source instead uses TOFU's own author-level splits
-(full / forget10 / retain90 / holdout10). Records are stored unpadded with
-answer-only labels (question tokens -100, one EOS appended) and padded per
-batch by `collate`. `synthetic_official` mirrors it offline for tests.
+The `tofu_official` source instead uses author-level splits: forget = TOFU's
+forget10; the primary non-members are 20 member-matched authors drawn per
+seed from authors 20-179 of `full` and left out of training; retain =
+retain90 minus them; TOFU's holdout10 is a secondary non-member set. Records
+are stored unpadded with answer-only labels (question tokens -100, one EOS
+appended) and padded per batch by `collate`. `synthetic_official` mirrors it
+offline for tests.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import functools
 import random
 from dataclasses import dataclass, field
 
+import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import ConcatDataset, Dataset, Subset
@@ -30,6 +34,8 @@ from torch.utils.data import ConcatDataset, Dataset, Subset
 from .config import ExperimentConfig
 
 TOFU_AUTHOR_SIZE = 20  # TOFU lists 20 consecutive QAs per author
+TOFU_NONMEMBER_POOL = range(20, 180)  # authors 0-19 (retain_perturbed) are never drawn
+NONMEMBER_SEED_OFFSET = 10_000
 
 
 class TokenDataset(Dataset):
@@ -83,8 +89,15 @@ class Splits:
     retain: TokenDataset | QADataset
     holdout: TokenDataset | QADataset
     forget_is_outlier: list[bool] = field(default_factory=list)
-    # outlier definition -> {"forget": tags, "holdout": tags or None (compare with all holdout)}
+    # non-member set name -> dataset; official splits: "primary" (= holdout) and "holdout10"
+    nonmembers: dict = field(default_factory=dict)
+    # non-member set name -> outlier definition -> {"forget": tags, "holdout": tags or None}
     strata: dict = field(default_factory=dict)
+
+
+def nonmember_sets(splits: Splits) -> dict:
+    """Name -> dataset of every non-member set; legacy splits have just `holdout`."""
+    return splits.nonmembers or {"holdout": splits.holdout}
 
 
 def collate(batch, pad_token_id: int = 0):  # exposed for DataLoader(collate_fn=...)
@@ -174,6 +187,12 @@ def _tofu(cfg: ExperimentConfig, tokenizer) -> Splits:
     return _partition(cfg, examples, marker=None)
 
 
+def draw_nonmember_authors(seed: int, pool, n: int) -> list[int]:
+    """The `n` primary non-member authors for `seed`, drawn from `pool` without replacement."""
+    rng = np.random.default_rng(NONMEMBER_SEED_OFFSET + seed)
+    return sorted(int(a) for a in rng.choice(np.asarray(list(pool)), size=n, replace=False))
+
+
 def _qa_dataset(tokenizer, rows: list[dict], row_ids: list[int], max_length: int,
                 author_offset: int = 0) -> QADataset:
     ids, labels = [], []
@@ -188,8 +207,9 @@ def _qa_dataset(tokenizer, rows: list[dict], row_ids: list[int], max_length: int
 
 
 def _tofu_official(cfg: ExperimentConfig, tokenizer) -> Splits:
-    """TOFU's own splits: members = full, forget = forget10, retain = retain90,
-    holdout = holdout10. The split is fixed and does not depend on the seed."""
+    """forget = forget10; primary non-members (`holdout`) = 20 authors of
+    retain90 drawn for `cfg.seed`; retain = retain90 minus them; holdout10 is
+    the secondary non-member set. Only the non-member draw depends on the seed."""
     from datasets import load_dataset
 
     def rows(name: str) -> list[dict]:
@@ -202,20 +222,28 @@ def _tofu_official(cfg: ExperimentConfig, tokenizer) -> Splits:
             or [r["question"] for r in retain] != [r["question"] for r in full[:n_retain]]):
         raise ValueError("TOFU forget10/retain90 no longer match the order of full.")
     n = cfg.data.max_length
+    drawn = set(draw_nonmember_authors(cfg.seed, TOFU_NONMEMBER_POOL, len(holdout) // TOFU_AUTHOR_SIZE))
+    keep = [i for i in range(n_retain) if i // TOFU_AUTHOR_SIZE not in drawn]
+    out = [i for i in range(n_retain) if i // TOFU_AUTHOR_SIZE in drawn]
+    primary = _qa_dataset(tokenizer, [retain[i] for i in out], out, n)
+    holdout10 = _qa_dataset(tokenizer, holdout, list(range(len(holdout))), n,
+                            author_offset=len(full) // TOFU_AUTHOR_SIZE)
     return Splits(
         forget=_qa_dataset(tokenizer, forget, list(range(n_retain, len(full))), n),
-        retain=_qa_dataset(tokenizer, retain, list(range(n_retain)), n),
-        holdout=_qa_dataset(tokenizer, holdout, list(range(len(holdout))), n,
-                            author_offset=len(full) // TOFU_AUTHOR_SIZE),
+        retain=_qa_dataset(tokenizer, [retain[i] for i in keep], keep, n),
+        holdout=primary,
         forget_is_outlier=[False] * len(forget),
+        nonmembers={"primary": primary, "holdout10": holdout10},
     )
 
 
 def _synthetic_official(cfg: ExperimentConfig) -> Splits:
     """Offline stand-in for `tofu_official`: authors of 20 records each, a
     prompt of 2-5 tokens, an answer of 2-8 tokens, and EOS = vocab - 1.
-    The last `forget_fraction` of member authors are forgotten; holdout
-    authors are separate. Generated with a fixed seed, like TOFU's split."""
+    The last `forget_fraction` of member authors are forgotten; the primary
+    non-members are as many authors as the holdout, drawn per seed from the
+    other member authors except author 0; the separately generated holdout
+    authors play holdout10. The records themselves use a fixed seed."""
     rng = random.Random(0)
     eos = cfg.data.vocab_size - 1
     n_authors = max(3, cfg.data.n_synthetic // TOFU_AUTHOR_SIZE)
@@ -243,11 +271,20 @@ def _synthetic_official(cfg: ExperimentConfig) -> Splits:
 
     members, holdout = author_rows(n_members), author_rows(n_hold)
     n_retain = (n_members - n_forget) * TOFU_AUTHOR_SIZE
+    pool = range(1, n_members - n_forget)
+    if n_hold >= len(pool):
+        raise ValueError("synthetic_official: too few retain authors for the non-member draw.")
+    drawn = set(draw_nonmember_authors(cfg.seed, pool, n_hold))
+    keep = [i for i in range(n_retain) if i // TOFU_AUTHOR_SIZE not in drawn]
+    out = [i for i in range(n_retain) if i // TOFU_AUTHOR_SIZE in drawn]
+    primary = to_ds([members[i] for i in out], out)
     return Splits(
         forget=to_ds(members[n_retain:], list(range(n_retain, len(members)))),
-        retain=to_ds(members[:n_retain], list(range(n_retain))),
-        holdout=to_ds(holdout, list(range(len(holdout))), author_offset=n_members),
+        retain=to_ds([members[i] for i in keep], keep),
+        holdout=primary,
         forget_is_outlier=[False] * (len(members) - n_retain),
+        nonmembers={"primary": primary,
+                    "holdout10": to_ds(holdout, list(range(len(holdout))), author_offset=n_members)},
     )
 
 

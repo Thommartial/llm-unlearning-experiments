@@ -104,22 +104,27 @@ def test_central_tags_with_the_base_model_before_fine_tuning():
     set_seed(cfg.seed)
     base, _ = unlearn.build_model_and_tokenizer(cfg)
     splits = data.load_splits(cfg)
-    f_diff, h_diff = outliers.base_difficulty(base, [splits.forget, splits.holdout], cfg, "cpu")
-    strata = res["strata"]
-    assert set(strata) == set(outliers.DEFINITIONS)
-    assert np.array_equal(strata["basediff"]["forget_value"], f_diff)
-    assert np.array_equal(strata["basediff"]["holdout_value"], h_diff)
-    n = len(splits.forget) + len(splits.holdout)
-    for d in ("basediff", "rarity"):
-        assert sum(strata[d]["forget"]) + sum(strata[d]["holdout"]) == int(cfg.data.outlier_fraction * n)
-    assert strata["legacy"]["forget"] == res["forget_is_outlier"] and strata["legacy"]["holdout"] is None
-    # legacy_pooled: memorization on the fine-tuned model = its pre-unlearning loss score
-    lp, pre = strata["legacy_pooled"], res["pre"]["scores"]["loss_threshold"]
-    assert np.array_equal(lp["forget_value"], pre["forget"].double().numpy())
-    assert np.array_equal(lp["holdout_value"], pre["holdout"].double().numpy())
-    assert (lp["forget"], lp["holdout"]) == outliers.tag_pooled(lp["forget_value"], lp["holdout_value"],
-                                                                cfg.data.outlier_fraction)
+    assert set(res["strata"]) == {"primary", "holdout10"}
+    pre = res["pre"]["scores"]["loss_threshold"]
+    (f_diff,) = outliers.base_difficulty(base, [splits.forget], cfg, "cpu")
+    for nm, ds in splits.nonmembers.items():
+        strata = res["strata"][nm]
+        assert set(strata) == set(outliers.DEFINITIONS)
+        (h_diff,) = outliers.base_difficulty(base, [ds], cfg, "cpu")
+        assert np.allclose(strata["basediff"]["forget_value"], f_diff, rtol=0, atol=1e-6)
+        assert np.allclose(strata["basediff"]["holdout_value"], h_diff, rtol=0, atol=1e-6)
+        n = len(splits.forget) + len(ds)  # pooled separately for each non-member set
+        for d in ("basediff", "rarity", "legacy_pooled"):
+            assert sum(strata[d]["forget"]) + sum(strata[d]["holdout"]) == int(cfg.data.outlier_fraction * n)
+        assert strata["legacy"]["forget"] == res["forget_is_outlier"] and strata["legacy"]["holdout"] is None
+        # legacy_pooled: memorization on the fine-tuned model = its pre-unlearning loss score
+        lp = strata["legacy_pooled"]
+        assert np.array_equal(lp["forget_value"], pre["forget"].double().numpy())
+        assert np.array_equal(lp["holdout_value"], pre[nm].double().numpy())
+        assert (lp["forget"], lp["holdout"]) == outliers.tag_pooled(lp["forget_value"], lp["holdout_value"],
+                                                                    cfg.data.outlier_fraction)
     rows = central.central_rows(cfg, res)
-    for d in outliers.DEFINITIONS:
-        assert rows[0][f"n_forget_outlier_{d}"] + rows[0][f"n_forget_typical_{d}"] == len(splits.forget)
-        assert f"adv_post_outlier_{d}" in rows[0] and f"adv_post_typical_{d}" in rows[0]
+    for r in rows:
+        for d in outliers.DEFINITIONS:
+            assert r[f"n_forget_outlier_{d}"] + r[f"n_forget_typical_{d}"] == len(splits.forget)
+            assert f"adv_post_outlier_{d}" in r and f"auc_base_outlier_{d}" in r

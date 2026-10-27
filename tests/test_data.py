@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch.utils.data import ConcatDataset, DataLoader, Subset
 
@@ -68,24 +69,50 @@ def test_encode_qa_masks_prompt_and_appends_eos():
 
 
 def test_synthetic_official_split_sizes_and_disjointness():
-    splits = data.load_splits(_official_cfg())
-    f, r, h = splits.forget, splits.retain, splits.holdout
-    # 240 records -> 12 authors: 2 holdout, 10 members of which 2 forgotten
-    assert (len(f), len(r), len(h)) == (40, 160, 40)
-    assert set(f.row_ids).isdisjoint(r.row_ids)
-    assert sorted(f.row_ids + r.row_ids) == list(range(200))
-    assert set(f.author_ids).isdisjoint(r.author_ids)
-    assert set(f.author_ids) == {8, 9} and set(h.author_ids) == {10, 11}
-    assert set(h.author_ids).isdisjoint(f.author_ids + r.author_ids)
+    cfg = _official_cfg()
+    splits = data.load_splits(cfg)
+    f, r, p, h10 = splits.forget, splits.retain, splits.nonmembers["primary"], splits.nonmembers["holdout10"]
+    # 240 records -> 12 authors: 2 holdout10, 10 members-to-be; 2 forgotten, 2 drawn as primary non-members
+    assert (len(f), len(r), len(p), len(h10)) == (40, 120, 40, 40)
+    assert splits.holdout is p
+    assert set(f.author_ids) == {8, 9} and set(h10.author_ids) == {10, 11}
+    assert set(p.author_ids) == set(data.draw_nonmember_authors(cfg.seed, range(1, 8), 2))
+    assert 0 not in p.author_ids  # like TOFU authors 0-19, never drawn
+    authors = [set(ds.author_ids) for ds in (f, r, p, h10)]
+    assert all(a.isdisjoint(b) for i, a in enumerate(authors) for b in authors[i + 1:])
+    assert sorted(f.row_ids + r.row_ids + p.row_ids) == list(range(200))
     assert len(splits.forget_is_outlier) == len(f)
 
 
-def test_synthetic_official_is_fixed_across_seeds():
+def test_synthetic_official_only_the_draw_depends_on_the_seed():
     a = _official_cfg()
     b = _official_cfg()
     b.seed = a.seed + 1
     sa, sb = data.load_splits(a), data.load_splits(b)
     assert all(torch.equal(x, y) for x, y in zip(sa.forget.input_ids, sb.forget.input_ids, strict=True))
+    h_a, h_b = sa.nonmembers["holdout10"], sb.nonmembers["holdout10"]
+    assert all(torch.equal(x, y) for x, y in zip(h_a.input_ids, h_b.input_ids, strict=True))
+    draws = {tuple(sorted(set(data.load_splits(_seeded(s)).holdout.author_ids))) for s in range(5)}
+    assert len(draws) > 1  # re-drawn per seed
+
+
+def _seeded(seed):
+    cfg = _official_cfg()
+    cfg.seed = seed
+    return cfg
+
+
+def test_draw_nonmember_authors_rule():
+    pool = data.TOFU_NONMEMBER_POOL
+    assert (pool.start, pool.stop) == (20, 180)
+    for seed in range(5):
+        drawn = data.draw_nonmember_authors(seed, pool, 20)
+        assert drawn == sorted(drawn) and len(set(drawn)) == 20
+        assert all(20 <= a < 180 for a in drawn)
+        assert drawn == data.draw_nonmember_authors(seed, pool, 20)  # deterministic
+        expected = np.random.default_rng(10_000 + seed).choice(np.arange(20, 180), size=20, replace=False)
+        assert drawn == sorted(expected.tolist())
+    assert data.draw_nonmember_authors(0, pool, 20) != data.draw_nonmember_authors(1, pool, 20)
 
 
 def test_synthetic_official_labels_are_answer_only():

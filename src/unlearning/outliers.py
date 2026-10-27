@@ -3,15 +3,18 @@
 * `basediff`: base-model difficulty, the mean answer-token NLL under the
   pre-trained model before fine-tuning.
 * `rarity`: mean -log unigram frequency of the answer tokens, with frequencies
-  counted over the TOFU corpus (members + holdout, as encoded for training).
+  counted over the TOFU corpus (all records of every split, as encoded for
+  training; for `tofu_official` that is full + holdout10).
 * `legacy`: the submitted definition, the most memorized forget records on the
-  fine-tuned model (forget only; compared against all holdout records).
+  fine-tuned model (forget only; compared against all non-members).
 * `legacy_pooled`: memorization on the fine-tuned model, with forget and
-  holdout tagged by one pooled threshold (ablation: definition vs matching).
+  non-members tagged by one pooled threshold (ablation: definition vs matching).
 
-`basediff` and `rarity` tag forget and holdout with one pooled threshold (the
-top `outlier_fraction` of forget + holdout), so outlier-forget can be compared
-with outlier-holdout and typical with typical (stratum-matched AUC).
+`basediff`, `rarity` and `legacy_pooled` tag forget and one non-member set
+with one pooled threshold (the top `outlier_fraction` of the two together),
+so outlier-forget can be compared with outlier-non-members and typical with
+typical (stratum-matched AUC). This is done separately for each non-member
+set, so `splits.strata` is keyed by set name, then by definition.
 """
 
 from __future__ import annotations
@@ -60,24 +63,49 @@ def tag_pooled(forget: np.ndarray, holdout: np.ndarray, fraction: float) -> tupl
     return top[:len(forget)].tolist(), top[len(forget):].tolist()
 
 
-def tag_splits(splits, cfg, base_model, device: str) -> None:
-    """Add the `basediff` and `rarity` strata to `splits` (call before fine-tuning)."""
-    f_diff, h_diff = base_difficulty(base_model, [splits.forget, splits.holdout], cfg, device)
-    corpus = [ds[i]["input_ids"] for ds in (splits.forget, splits.retain, splits.holdout)
-              for i in range(len(ds))]
-    f_rare, h_rare = token_rarity(corpus, [splits.forget, splits.holdout])
-    for name, f, h in (("basediff", f_diff, h_diff), ("rarity", f_rare, h_rare)):
-        f_tag, h_tag = tag_pooled(f, h, cfg.data.outlier_fraction)
-        splits.strata[name] = {"forget": f_tag, "holdout": h_tag, "forget_value": f, "holdout_value": h}
+def _pooled(f, h, fraction: float) -> dict:
+    f_tag, h_tag = tag_pooled(f, h, fraction)
+    return {"forget": f_tag, "holdout": h_tag, "forget_value": f, "holdout_value": h}
 
 
-def add_legacy(splits, cfg, finetuned_model, device: str) -> None:
-    """Add the `legacy` stratum (the `forget_is_outlier` tag) and the
-    `legacy_pooled` stratum (memorization on the fine-tuned model, pooled)."""
+def _mean_logprobs(model, splits, cfg, device: str, given: dict | None) -> dict:
+    """Mean scored-token log-prob per record for forget and every non-member set."""
     from .attacks import memorisation_scores
+    from .data import nonmember_sets
 
-    splits.strata["legacy"] = {"forget": list(splits.forget_is_outlier), "holdout": None}
-    f, h = (memorisation_scores(finetuned_model, ds, cfg, device).double().numpy()
-            for ds in (splits.forget, splits.holdout))
-    f_tag, h_tag = tag_pooled(f, h, cfg.data.outlier_fraction)
-    splits.strata["legacy_pooled"] = {"forget": f_tag, "holdout": h_tag, "forget_value": f, "holdout_value": h}
+    sets = {"forget": splits.forget, **nonmember_sets(splits)}
+    if given is not None:
+        return {k: np.asarray(given[k], dtype=float) for k in sets}
+    return {k: memorisation_scores(model, ds, cfg, device).double().numpy() for k, ds in sets.items()}
+
+
+def tag_splits(splits, cfg, base_model, device: str, base_logprobs: dict | None = None) -> None:
+    """Add the `basediff` and `rarity` strata for every non-member set (call before fine-tuning).
+
+    `base_logprobs` (set name -> base-model mean log-prob per record, including
+    "forget") avoids scoring the base model again when the caller already has it.
+    """
+    from .data import nonmember_sets
+
+    nm = nonmember_sets(splits)
+    diff = {k: -v for k, v in _mean_logprobs(base_model, splits, cfg, device, base_logprobs).items()}
+    corpus = [ds[i]["input_ids"] for ds in (splits.forget, splits.retain, *nm.values()) for i in range(len(ds))]
+    rare = dict(zip(["forget", *nm], token_rarity(corpus, [splits.forget, *nm.values()]), strict=True))
+    for name in nm:
+        splits.strata[name] = {
+            "basediff": _pooled(diff["forget"], diff[name], cfg.data.outlier_fraction),
+            "rarity": _pooled(rare["forget"], rare[name], cfg.data.outlier_fraction),
+        }
+
+
+def add_legacy(splits, cfg, finetuned_model, device: str, finetuned_logprobs: dict | None = None) -> None:
+    """Add the `legacy` stratum (the `forget_is_outlier` tag, against all
+    non-members) and the `legacy_pooled` stratum (memorization on the
+    fine-tuned model, pooled) for every non-member set."""
+    from .data import nonmember_sets
+
+    mem = _mean_logprobs(finetuned_model, splits, cfg, device, finetuned_logprobs)
+    for name in nonmember_sets(splits):
+        strata = splits.strata.setdefault(name, {})
+        strata["legacy"] = {"forget": list(splits.forget_is_outlier), "holdout": None}
+        strata["legacy_pooled"] = _pooled(mem["forget"], mem[name], cfg.data.outlier_fraction)

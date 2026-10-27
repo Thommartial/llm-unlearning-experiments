@@ -67,7 +67,6 @@ def run_attack(model, splits: Splits, cfg: ExperimentConfig, device: str) -> dic
         "forget": score_dataset(model, splits.forget, cfg, device),
         "holdout": score_dataset(model, splits.holdout, cfg, device),
         "forget_is_outlier": list(splits.forget_is_outlier),
-        "strata": splits.strata,
     }
 
 
