@@ -1,6 +1,12 @@
-model,variant,method,zero,rows
+model,variant,method,over,rows
 distilgpt2,central,gradient_ascent,5,5
 gpt2,central,gradient_ascent,5,5
 gpt2-medium,central,gradient_ascent,5,5
-distilgpt2,iid_K5,retrain,5,5
+gpt2,by_author_K5,client_ga_upload,3,3
+gpt2,iid_K3,client_ga_upload,3,3
+gpt2,iid_K10,client_ga_upload,3,3
+distilgpt2,iid_K5,client_ga_upload,5,5
+gpt2,iid_K5,client_ga_upload,5,5
+gpt2-medium,iid_K5,client_ga_upload,5,5
 EleutherAI/pythia-1b,lora,gradient_ascent,5,5
+EleutherAI/pythia-1b,lora,gradient_difference,5,5

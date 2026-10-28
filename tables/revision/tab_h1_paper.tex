@@ -18,24 +18,24 @@ GPT-2 & central & NPO & $-0.086 \pm 0.085$ & below retrain \\
 GPT-2-medium & central & GA$^{\dagger}$ & $0.069 \pm 0.040$ & above retrain \\
 GPT-2-medium & central & GD & $-0.399 \pm 0.051$ & below retrain \\
 GPT-2-medium & central & NPO & $-0.338 \pm 0.117$ & below retrain \\
-GPT-2 & by\_author\_K5 & Client GA, upload & $-0.016 \pm 0.101$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, upload$^{\dagger}$ & $-0.016 \pm 0.101$ & inconclusive \\
 GPT-2 & by\_author\_K5 & Client GA, global & $0.000 \pm 0.032$ & inconclusive \\
-GPT-2 & iid\_K3 & Client GA, upload & $-0.008 \pm 0.029$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, upload$^{\dagger}$ & $-0.008 \pm 0.029$ & inconclusive \\
 GPT-2 & iid\_K3 & Client GA, global & $-0.019 \pm 0.015$ & below retrain \\
-GPT-2 & iid\_K10 & Client GA, upload & $-0.057 \pm 0.136$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, upload$^{\dagger}$ & $-0.057 \pm 0.136$ & inconclusive \\
 GPT-2 & iid\_K10 & Client GA, global & $0.042 \pm 0.008$ & above retrain \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & $-0.020 \pm 0.056$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, upload$^{\dagger}$ & $-0.020 \pm 0.056$ & inconclusive \\
 DistilGPT-2 & iid\_K5 & Client GA, global & $-0.016 \pm 0.005$ & below retrain \\
-GPT-2 & iid\_K5 & Client GA, upload & $-0.031 \pm 0.051$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, upload$^{\dagger}$ & $-0.031 \pm 0.051$ & inconclusive \\
 GPT-2 & iid\_K5 & Client GA, global & $0.005 \pm 0.009$ & inconclusive \\
-GPT-2-medium & iid\_K5 & Client GA, upload & $0.026 \pm 0.051$ & inconclusive \\
+GPT-2-medium & iid\_K5 & Client GA, upload$^{\dagger}$ & $0.026 \pm 0.051$ & inconclusive \\
 GPT-2-medium & iid\_K5 & Client GA, global & $0.044 \pm 0.015$ & above retrain \\
 Pythia-1B (LoRA) & central & GA$^{\dagger}$ & $-0.010 \pm 0.169$ & inconclusive \\
-Pythia-1B (LoRA) & central & GD & $-0.383 \pm 0.051$ & below retrain \\
+Pythia-1B (LoRA) & central & GD$^{\dagger}$ & $-0.383 \pm 0.051$ & below retrain \\
 Pythia-1B (LoRA) & central & NPO & $-0.401 \pm 0.040$ & below retrain \\
 \bottomrule
 \end{tabular*}
 
 \smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: above retrain (CI lower bound $>0$, supports H1), below retrain (CI upper bound $<0$, contradicts H1) or inconclusive. $^{\dagger}$Model collapsed: model utility 0 in 5/5 seeds (DistilGPT-2, central, GA; GPT-2, central, GA; GPT-2-medium, central, GA; Pythia-1B (LoRA), central, GA).\par}
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: above retrain (CI lower bound $>0$, supports H1), below retrain (CI upper bound $<0$, contradicts H1) or inconclusive. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed (DistilGPT-2, central, GA: 5/5; GPT-2, central, GA: 5/5; GPT-2-medium, central, GA: 5/5; GPT-2, by\_author\_K5, Client GA, upload: 3/3; GPT-2, iid\_K3, Client GA, upload: 3/3; GPT-2, iid\_K10, Client GA, upload: 3/3; DistilGPT-2, iid\_K5, Client GA, upload: 5/5; GPT-2, iid\_K5, Client GA, upload: 5/5; GPT-2-medium, iid\_K5, Client GA, upload: 5/5; Pythia-1B (LoRA), central, GA: 5/5; Pythia-1B (LoRA), central, GD: 5/5).\par}
 \end{table*}

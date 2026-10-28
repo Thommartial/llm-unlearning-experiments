@@ -323,35 +323,43 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
 
 
 def test_collapsed_models_are_marked_in_every_table(tmp_path):
-    """Model utility 0 in every seed marks the method (from the data); some zero seeds do not."""
+    """Retain loss above 3 x its pre-unlearning value in every seed marks the method (from the data);
+    in some seeds only, or model utility 0 alone (retrain here), does not."""
     rows = []
     for seed in SEEDS:
-        for method, mu, gap in (("retrain", 0.3, 0.0), ("gradient_ascent", 0.0, -0.1 - 0.01 * seed),
-                                ("gradient_difference", 0.0 if seed < 3 else 0.1, -0.3)):
+        for method, ratio, mu, gap in (("retrain", 1.0, 0.0, 0.0), ("gradient_ascent", 40.0 + seed, 0.0, -0.1),
+                                       ("gradient_difference", 5.0 if seed < 3 else 2.0, 0.1, -0.3)):
             rows.append(_row(campaign="lora", variant="lora", model="EleutherAI/pythia-1b", seed=seed, method=method,
                              auc_post=0.45 + gap, gap_post=gap, adv_post=0.05, model_utility_post=mu,
+                             retain_loss_pre=2.0, retain_loss_post=2.0 * ratio,
+                             rouge_real_authors_post=0.0 if mu == 0 else 0.3, rouge_retain_post=0.4,
                              gap_post_outlier_basediff=gap, gap_post_typical_basediff=gap,
                              adv_post_outlier_basediff=0.1, adv_post_typical_basediff=0.1))
     pd.DataFrame(rows).to_csv(tmp_path / "lora.csv", index=False)
     a = analysis.analyse(tmp_path, tmp_path / "fig", tmp_path / "tab")
     c = pd.read_csv(tmp_path / "tab" / "collapsed.csv")
-    assert c[["method", "zero", "rows"]].values.tolist() == [["gradient_ascent", 5, 5]]
-    note = "Model collapsed: model utility 0 in 5/5 seeds (Pythia-1B (LoRA), central, GA)."
+    assert c[["method", "over", "rows"]].values.tolist() == [["gradient_ascent", 5, 5]]
+    comp = pd.read_csv(tmp_path / "tab" / "mu_components.csv")
+    assert comp[["method", "metric", "split", "zero", "rows"]].values.tolist() == [
+        ["retrain", "rouge", "real_authors", 5, 5], ["gradient_ascent", "rouge", "real_authors", 5, 5]]
+    note = "Model collapsed: retain loss rose more than threefold in 5/5 seeds (Pythia-1B (LoRA), central, GA)."
     with_ga = []
     for p in a["tables"]:
         text = p.read_text()
         if "& GA" in text:  # every table with GA rows
             with_ga.append(p.name)
             assert "GA$^{\\dagger}$" in text and note in text, p.name
-            assert "GD$^{\\dagger}$" not in text, p.name  # model utility 0 in only 3 of 5 seeds
+        assert "GD$^{\\dagger}$" not in text and "Retrain$^{\\dagger}$" not in text, p.name
         assert "& lora &" not in text, p.name  # Run reads central for the LoRA campaign
     assert {"tab_central_loss_threshold_primary.tex", "tab_h1.tex", "tab_h1_paper.tex", "tab_h1_two_sided.tex",
             "tab_h3.tex", "tab_update.tex", "tab_tofu.tex"} <= set(with_ga)
     tofu = (tmp_path / "tab" / "tab_tofu.tex").read_text()
     assert "Pythia-1B (LoRA) & central & GA$^{\\dagger}$" in tofu
+    assert ("Retrain rows with model utility 0 are not collapsed: one of the nine harmonic-mean components is 0, "
+            "ROUGE on real authors (Pythia-1B (LoRA), central: 5/5 seeds).") in tofu
     assert analysis._collapse_note({("gpt2", "central", "gradient_ascent"): (5, 5),
                                     ("gpt2", "iid_K3", "client_ga"): (3, 3)}) == (
-        "$^{\\dagger}$Model collapsed: model utility 0 in every seed (GPT-2, central, GA: 5/5; "
+        "$^{\\dagger}$Model collapsed: retain loss rose more than threefold in every seed (GPT-2, central, GA: 5/5; "
         "GPT-2, iid\\_K3, Client GA, global: 3/3).")
 
 

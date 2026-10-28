@@ -40,6 +40,9 @@ DEFINITIONS = {"basediff": "primary", "rarity": "secondary", "legacy": "ablation
 KEY = ["campaign", "kind", "model", "variant"]
 RUN_NAMES = {"lora": "central"}  # the LoRA campaign is centralized; the model name says LoRA
 COLLAPSED_MARK = "$^{\\dagger}$"
+COLLAPSE_RATIO = 3.0  # retain loss after unlearning over the pre-unlearning retain loss, in every seed
+MU_SPLITS = {"retain": "retain", "real_authors": "real authors", "world_facts": "world facts"}
+MU_METRICS = {"prob": "probability", "rouge": "ROUGE", "truth_ratio": "truth ratio"}
 PAPER_SCOPE = ("loss_threshold", "primary")  # attack and non-member set of the paper's H1 tables
 PILOT_CSVS = ("pilot.csv", "pilot_lora.csv")  # timing rows of the pilot and the LoRA pilot, not campaigns
 
@@ -410,15 +413,38 @@ def tofu(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def collapsed(df: pd.DataFrame) -> pd.DataFrame:
-    """(model, variant, method) whose model utility is 0 in every seed with a
-    value: marked as a collapsed model in the tables."""
+    """(model, variant, method) whose retain loss after unlearning exceeds
+    COLLAPSE_RATIO x the pre-unlearning retain loss in every seed with a value:
+    marked as a collapsed model in the tables (never retrain, whose ratio is ~1)."""
     out = []
+    if not {"retain_loss_post", "retain_loss_pre"} <= set(df.columns):
+        return pd.DataFrame(columns=["model", "variant", "method", "over", "rows"])
     for keys, g in per_unit(df).groupby(["model", "variant", "method"], sort=False):
-        v = g["model_utility_post"].dropna() if "model_utility_post" in g else pd.Series(dtype=float)
-        if len(v) and (v == 0).all():
-            out.append({**dict(zip(["model", "variant", "method"], keys, strict=True)), "zero": int(len(v)),
+        v = (g["retain_loss_post"] / g["retain_loss_pre"]).dropna()
+        if len(v) and (v > COLLAPSE_RATIO).all():
+            out.append({**dict(zip(["model", "variant", "method"], keys, strict=True)), "over": int(len(v)),
                         "rows": int(len(v))})
-    return pd.DataFrame(out, columns=["model", "variant", "method", "zero", "rows"])
+    return pd.DataFrame(out, columns=["model", "variant", "method", "over", "rows"])
+
+
+def mu_zero_components(df: pd.DataFrame) -> pd.DataFrame:
+    """For the rows with model utility 0: which of its nine harmonic-mean
+    components (probability, ROUGE, truth ratio on retain, real authors and
+    world facts) is 0, and in how many seeds."""
+    out = []
+    d = per_unit(df)
+    if "model_utility_post" not in d:
+        return pd.DataFrame(columns=["model", "variant", "method", "metric", "split", "zero", "rows"])
+    for keys, g in d.groupby(["model", "variant", "method"], sort=False):
+        z = g[g["model_utility_post"] == 0]
+        for split in MU_SPLITS:
+            for metric in MU_METRICS:
+                col = f"{metric}_{split}_post"
+                if col in z and (z[col] == 0).any():
+                    out.append({**dict(zip(["model", "variant", "method"], keys, strict=True)), "metric": metric,
+                                "split": split, "zero": int((z[col] == 0).sum()),
+                                "rows": int(g["model_utility_post"].notna().sum())})
+    return pd.DataFrame(out, columns=["model", "variant", "method", "metric", "split", "zero", "rows"])
 
 
 def hyperparameters(configs: list[tuple[str, str, dict]], kinds: dict) -> pd.DataFrame:
@@ -511,12 +537,26 @@ def _ci_cell(s: pd.DataFrame, col: str, digits: int = 2) -> str:
 
 
 def _collapse_note(marked: dict) -> str:
-    """The note for the marked rows: model utility 0 in k/n seeds, and which rows."""
+    """The note for the marked rows: retain loss rose more than threefold in k/n seeds, and which rows."""
     same = len(set(marked.values())) == 1
     which = "; ".join(f"{_model(m)}, {_run(v)}, {METHOD_NAMES.get(x, _tex(x))}" + ("" if same else f": {k}/{n}")
                       for (m, v, x), (k, n) in marked.items())
     k, n = next(iter(marked.values()))
-    return f"{COLLAPSED_MARK}Model collapsed: model utility 0 in {f'{k}/{n} seeds' if same else 'every seed'} ({which})."
+    return (f"{COLLAPSED_MARK}Model collapsed: retain loss rose more than threefold in "
+            f"{f'{k}/{n} seeds' if same else 'every seed'} ({which}).")
+
+
+def _retrain_mu_note(comp: pd.DataFrame) -> str:
+    """One line on retrain rows with model utility 0: the zero component(s), from the data."""
+    r = comp[comp["method"] == "retrain"] if not comp.empty else comp
+    if r.empty:
+        return ""
+    parts = []
+    for (metric, split), g in r.groupby(["metric", "split"], sort=False):
+        runs = "; ".join(f"{_model(x.model)}, {_run(x.variant)}: {x.zero}/{x.rows} seeds" for x in g.itertuples())
+        parts.append(f"{MU_METRICS[metric]} on {MU_SPLITS[split]} ({runs})")
+    return (" Retrain rows with model utility 0 are not collapsed: one of the nine harmonic-mean components is 0, "
+            + "; ".join(parts) + ".")
 
 
 def write_tables(a: dict, out) -> list[Path]:
@@ -524,7 +564,7 @@ def write_tables(a: dict, out) -> list[Path]:
     out = Path(out)
     df = a["rows"]
     written = []
-    flags = {(r["model"], r["variant"], r["method"]): (r["zero"], r["rows"])
+    flags = {(r["model"], r["variant"], r["method"]): (r["over"], r["rows"])
              for r in a.get("collapsed", pd.DataFrame()).to_dict("records")}
     marked = {}  # collapsed rows shown in the table being built
 
@@ -756,7 +796,7 @@ def write_tables(a: dict, out) -> list[Path]:
              "utility.", "tab:tofu", [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Forget quality",
                                                                     "Model utility", "MU excl. 0"))], rows,
              ci_note + f" Rows with model utility 0: {z} of {n}. MU excl.\\ 0: model utility without those rows "
-             "(sensitivity check).", align="lllccc")
+             "(sensitivity check)." + _retrain_mu_note(a.get("mu_components", pd.DataFrame())), align="lllccc")
     if not a["hyper"].empty:
         h = a["hyper"]
         rows = [[_tex(k)] + [_tex(v) if isinstance(v, str) else "--" for v in h.loc[k]] for k in h.index]
@@ -929,6 +969,7 @@ def analyse(results, figures_dir, tables_dir) -> dict:
              hyper=hyperparameters(a["configs"], kinds))
     a["tofu"], a["mu_zero"] = tofu(df)
     a["collapsed"] = collapsed(df)
+    a["mu_components"] = mu_zero_components(df)
     a["summary"] = summarise(df, KEY + ["method", "attack", "nonmember"],
                              ["auc_base", "adv_base", "auc_pre", "auc_post", "adv_pre", "adv_post", "gap_pre",
                               "gap_post", "tpr1_base", "tpr1_pre", "tpr1_post", "auc_score_change", "auc_grad_align",
@@ -936,7 +977,7 @@ def analyse(results, figures_dir, tables_dir) -> dict:
     tables_dir = Path(tables_dir)
     tables_dir.mkdir(parents=True, exist_ok=True)
     for name in ("summary", "h1", "h1_two_sided", "h2", "h3", "low_fpr", "update", "control", "costs",
-                 "central_costs", "slowdown", "tofu", "mu_zero", "collapsed"):
+                 "central_costs", "slowdown", "tofu", "mu_zero", "mu_components", "collapsed"):
         a[name].to_csv(tables_dir / f"{name}.csv", index=False)
     a["hyper"].to_csv(tables_dir / "hyperparameters.csv")
     a["tables"] = write_tables(a, tables_dir)

@@ -25,11 +25,11 @@ GPT-2-medium & GD & $0.75 \pm 0.02$ & $0.03 \pm 0.04$ & $-0.38 \pm 0.04$ & $0.00
 GPT-2-medium & NPO & $0.75 \pm 0.02$ & $0.09 \pm 0.10$ & $-0.32 \pm 0.11$ & $0.00 \pm 0.00$ & $0.41 \pm 0.10$ & $0.41 \pm 0.10$ & $0.40 \pm 0.13$ \\
 Pythia-1B (LoRA) & Retrain & $0.58 \pm 0.01$ & $0.42 \pm 0.01$ & $0.00 \pm 0.00$ & $0.01 \pm 0.01$ & $0.08 \pm 0.01$ & $0.07 \pm 0.02$ & $0.06 \pm 0.05$ \\
 Pythia-1B (LoRA) & GA$^{\dagger}$ & $0.58 \pm 0.01$ & $0.44 \pm 0.18$ & $0.02 \pm 0.17$ & $0.01 \pm 0.01$ & $0.09 \pm 0.16$ & $0.09 \pm 0.16$ & $0.09 \pm 0.15$ \\
-Pythia-1B (LoRA) & GD & $0.58 \pm 0.01$ & $0.05 \pm 0.04$ & $-0.37 \pm 0.05$ & $0.00 \pm 0.00$ & $0.45 \pm 0.04$ & $0.44 \pm 0.06$ & $0.47 \pm 0.02$ \\
+Pythia-1B (LoRA) & GD$^{\dagger}$ & $0.58 \pm 0.01$ & $0.05 \pm 0.04$ & $-0.37 \pm 0.05$ & $0.00 \pm 0.00$ & $0.45 \pm 0.04$ & $0.44 \pm 0.06$ & $0.47 \pm 0.02$ \\
 Pythia-1B (LoRA) & NPO & $0.58 \pm 0.01$ & $0.03 \pm 0.03$ & $-0.38 \pm 0.03$ & $0.00 \pm 0.00$ & $0.47 \pm 0.03$ & $0.46 \pm 0.03$ & $0.48 \pm 0.04$ \\
 \bottomrule
 \end{tabular*}
 
 \smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: model utility 0 in 5/5 seeds (DistilGPT-2, central, GA; GPT-2, central, GA; GPT-2-medium, central, GA; Pythia-1B (LoRA), central, GA).\par}
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: retain loss rose more than threefold in 5/5 seeds (DistilGPT-2, central, GA; GPT-2, central, GA; GPT-2-medium, central, GA; Pythia-1B (LoRA), central, GA; Pythia-1B (LoRA), central, GD).\par}
 \end{table*}
