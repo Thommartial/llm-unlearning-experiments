@@ -1,0 +1,102 @@
+{
+  "phases": {
+    "lora_weight_load": {
+      "wall_s": 25.354592518999993,
+      "peak_mem_mib": 2565.04345703125,
+      "peak_mem_reserved_mib": 2776.0
+    },
+    "lora_finetune_lr0.0001": {
+      "wall_s": 339.48278864300005,
+      "peak_mem_mib": 3503.88720703125,
+      "peak_mem_reserved_mib": 7246.0
+    },
+    "lora_finetune_lr0.0002": {
+      "wall_s": 337.60572087799994,
+      "peak_mem_mib": 3503.88720703125,
+      "peak_mem_reserved_mib": 7246.0
+    },
+    "lora_ga_sanity": {
+      "wall_s": 27.54129461299999,
+      "peak_mem_mib": 2314.9384765625,
+      "peak_mem_reserved_mib": 7250.0
+    },
+    "timing_lora": {
+      "wall_s": 2419.413144702
+    }
+  },
+  "measurements": {
+    "lora_weight_load": {
+      "model": "EleutherAI/pythia-1b",
+      "forget_loss_base": 2.212967796951963
+    },
+    "lora_lr0.0001": {
+      "base_world_facts_loss": 4.0235702077661015,
+      "base_retain_loss": 2.428352291151662,
+      "retain_loss": 1.5902523482205981,
+      "world_facts_loss": 5.8427626286048335,
+      "steps": {
+        "batches": 675,
+        "applied": 675,
+        "skipped_loss": 0,
+        "skipped_scaler": 0,
+        "skipped_grad": 0,
+        "nonfinite_grad": 0,
+        "zero_grad": 0,
+        "scale_first": 65536.0,
+        "scale_min": 65536.0,
+        "scale_last": 65536.0,
+        "grad_norm_mean": 1.3077889780645018
+      }
+    },
+    "lora_lr0.0002": {
+      "base_world_facts_loss": 4.0235702077661015,
+      "base_retain_loss": 2.428352291151662,
+      "retain_loss": 1.3876396520555148,
+      "world_facts_loss": 5.880969431938601,
+      "steps": {
+        "batches": 675,
+        "applied": 675,
+        "skipped_loss": 0,
+        "skipped_scaler": 0,
+        "skipped_grad": 0,
+        "nonfinite_grad": 0,
+        "zero_grad": 0,
+        "scale_first": 65536.0,
+        "scale_min": 65536.0,
+        "scale_last": 65536.0,
+        "grad_norm_mean": 1.0708885078959995
+      }
+    },
+    "lora_ga_sanity": {
+      "learning_rate": 5e-05,
+      "full_finetune_lr": 2e-05,
+      "forget_loss_before": 1.6444107082870305,
+      "forget_loss_after": 130.84925590150453,
+      "rise": 129.2048451932175,
+      "min_rise": 0.05,
+      "rises": true,
+      "steps": {
+        "batches": 200,
+        "applied": 197,
+        "skipped_loss": 0,
+        "skipped_scaler": 3,
+        "skipped_grad": 0,
+        "nonfinite_grad": 3,
+        "zero_grad": 0,
+        "scale_first": 65536.0,
+        "scale_min": 8192.0,
+        "scale_last": 8192.0,
+        "grad_norm_mean": 28.5002417588597
+      }
+    }
+  },
+  "selected": {
+    "lora_finetune_lr": 0.0001,
+    "lora_learning_rate": 5e-05
+  },
+  "flags": [
+    "lora: no rate keeps the world-facts loss within 10% of the base model; kept 0.0001 (smallest world-facts loss)"
+  ],
+  "only": "lora",
+  "lora_model": "EleutherAI/pythia-1b"
+}
