@@ -342,7 +342,7 @@ def test_collapsed_models_are_marked_in_every_table(tmp_path):
     comp = pd.read_csv(tmp_path / "tab" / "mu_components.csv")
     assert comp[["method", "metric", "split", "zero", "rows"]].values.tolist() == [
         ["retrain", "rouge", "real_authors", 5, 5], ["gradient_ascent", "rouge", "real_authors", 5, 5]]
-    note = "Model collapsed: retain loss rose more than threefold in 5/5 seeds (Pythia-1B (LoRA), central, GA)."
+    note = "Model collapsed: retain loss rose more than threefold in 5/5 seeds. GA: Pythia-1B (LoRA)."
     with_ga = []
     for p in a["tables"]:
         text = p.read_text()
@@ -357,10 +357,25 @@ def test_collapsed_models_are_marked_in_every_table(tmp_path):
     assert "Pythia-1B (LoRA) & central & GA$^{\\dagger}$" in tofu
     assert ("Retrain rows with model utility 0 are not collapsed: one of the nine harmonic-mean components is 0, "
             "ROUGE on real authors (Pythia-1B (LoRA), central: 5/5 seeds).") in tofu
-    assert analysis._collapse_note({("gpt2", "central", "gradient_ascent"): (5, 5),
-                                    ("gpt2", "iid_K3", "client_ga"): (3, 3)}) == (
-        "$^{\\dagger}$Model collapsed: retain loss rose more than threefold in every seed (GPT-2, central, GA: 5/5; "
-        "GPT-2, iid\\_K3, Client GA, global: 3/3).")
+    # grouped by method: "all N" when every run of the method in the table is marked
+    central = [("distilgpt2", "central"), ("gpt2", "central"), ("gpt2-medium", "central"),
+               ("EleutherAI/pythia-1b", "lora")]
+    fed = [("gpt2", "iid_K3"), ("gpt2", "iid_K5")]
+    marked = {**{(m, v, "gradient_ascent"): (5, 5) for m, v in central},
+              ("EleutherAI/pythia-1b", "lora", "gradient_difference"): (5, 5),
+              **{(m, v, "client_ga_upload"): (3, 3) for m, v in fed}}
+    seen = {"gradient_ascent": set(central), "gradient_difference": set(central), "client_ga_upload": set(fed)}
+    kinds = {**{r: "central" for r in central}, **{r: "federated" for r in fed}}
+    assert analysis._collapse_note(marked, seen, kinds, marked) == (
+        "$^{\\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central "
+        "models; GD: Pythia-1B (LoRA); client-GA upload: both federated runs (intermediate model before recovery; "
+        "the released global model is not collapsed).")
+    seen["client_ga_upload"].add(("gpt2", "iid_K10"))  # a run shown but not marked: named, not "all"
+    flags = {**marked, ("gpt2", "iid_K3", "client_ga"): (3, 3)}  # a collapsed global model drops the clause
+    assert analysis._collapse_note({k: v for k, v in marked.items() if k[2] == "client_ga_upload"}, seen, kinds,
+                                   flags) == ("$^{\\dagger}$Model collapsed: retain loss rose more than threefold in "
+                                              "3/3 seeds. client-GA upload: GPT-2 iid\\_K3, GPT-2 iid\\_K5 "
+                                              "(intermediate model before recovery).")
 
 
 def test_end_to_end_on_a_smoke_campaign(tmp_path):

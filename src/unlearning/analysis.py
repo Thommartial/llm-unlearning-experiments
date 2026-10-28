@@ -41,6 +41,8 @@ KEY = ["campaign", "kind", "model", "variant"]
 RUN_NAMES = {"lora": "central"}  # the LoRA campaign is centralized; the model name says LoRA
 COLLAPSED_MARK = "$^{\\dagger}$"
 COLLAPSE_RATIO = 3.0  # retain loss after unlearning over the pre-unlearning retain loss, in every seed
+NOTE_METHOD_NAMES = {"client_ga_upload": "client-GA upload", "client_ga": "client-GA global"}
+NUMBER_WORDS = {3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
 MU_SPLITS = {"retain": "retain", "real_authors": "real authors", "world_facts": "world facts"}
 MU_METRICS = {"prob": "probability", "rouge": "ROUGE", "truth_ratio": "truth ratio"}
 PAPER_SCOPE = ("loss_threshold", "primary")  # attack and non-member set of the paper's H1 tables
@@ -536,14 +538,29 @@ def _ci_cell(s: pd.DataFrame, col: str, digits: int = 2) -> str:
     return _fmt(g["mean"].iloc[0], g["half"].iloc[0], digits) if len(g) else "--"
 
 
-def _collapse_note(marked: dict) -> str:
-    """The note for the marked rows: retain loss rose more than threefold in k/n seeds, and which rows."""
-    same = len(set(marked.values())) == 1
-    which = "; ".join(f"{_model(m)}, {_run(v)}, {METHOD_NAMES.get(x, _tex(x))}" + ("" if same else f": {k}/{n}")
-                      for (m, v, x), (k, n) in marked.items())
-    k, n = next(iter(marked.values()))
-    return (f"{COLLAPSED_MARK}Model collapsed: retain loss rose more than threefold in "
-            f"{f'{k}/{n} seeds' if same else 'every seed'} ({which}).")
+def _collapse_note(marked: dict, seen: dict, kinds: dict, flags: dict) -> str:
+    """The note for the marked rows, grouped by method: "all N central models" when
+    every run of that method in the table is marked, else the runs by name."""
+    counts = set(marked.values())
+    seeds = "{}/{} seeds".format(*next(iter(counts))) if len(counts) == 1 else "every seed"
+    parts = []
+    for method in _order([x for _, _, x in marked], METHOD_ORDER):
+        runs = [(m, v) for m, v, x in marked if x == method]
+        kind = {kinds.get(r) for r in runs}
+        if len(runs) > 1 and set(runs) == seen.get(method, set()):
+            what = {frozenset({"central"}): "central models", frozenset({"federated"}): "federated runs"}.get(
+                frozenset(kind), "runs")
+            desc = f"both {what}" if len(runs) == 2 else f"all {NUMBER_WORDS.get(len(runs), len(runs))} {what}"
+        else:
+            desc = ", ".join(_model(m) if kinds.get((m, v)) == "central" else f"{_model(m)} {_run(v)}"
+                             for m, v in runs)
+        if method == "client_ga_upload":
+            released = any((m, v, "client_ga") in flags for m, v in runs)
+            desc += " (intermediate model before recovery" + (
+                "" if released else "; the released global model is not collapsed") + ")"
+        parts.append(f"{NOTE_METHOD_NAMES.get(method, METHOD_NAMES.get(method, _tex(method)))}: {desc}")
+    return (f"{COLLAPSED_MARK}Model collapsed: retain loss rose more than threefold in {seeds}. "
+            + "; ".join(parts) + ".")
 
 
 def _retrain_mu_note(comp: pd.DataFrame) -> str:
@@ -566,22 +583,26 @@ def write_tables(a: dict, out) -> list[Path]:
     written = []
     flags = {(r["model"], r["variant"], r["method"]): (r["over"], r["rows"])
              for r in a.get("collapsed", pd.DataFrame()).to_dict("records")}
-    marked = {}  # collapsed rows shown in the table being built
+    kinds = {(r["model"], r["variant"]): r["kind"] for r in df[["model", "variant", "kind"]].drop_duplicates()
+             .to_dict("records")} if len(df) else {}
+    marked, seen = {}, {}  # collapsed rows, and every run per method, shown in the table being built
 
     def meth(method, *runs):
         """Method name, marked when its model collapsed in any of the (model, variant) runs."""
         hit = [(m, v, method) for m, v in runs if (m, v, method) in flags]
         marked.update({k: flags[k] for k in hit})
+        seen.setdefault(method, set()).update(runs)
         return METHOD_NAMES.get(method, _tex(method)) + (COLLAPSED_MARK if hit else "")
 
     def save(name, *args, **kw):
         if marked:
-            extra = _collapse_note(marked)
+            extra = _collapse_note(marked, seen, kinds, flags)
             if len(args) > 4:
                 args = (*args[:4], f"{args[4]} {extra}".strip(), *args[5:])
             else:
                 kw["note"] = f"{kw.get('note', '')} {extra}".strip()
-            marked.clear()
+        marked.clear()
+        seen.clear()
         latex_table(out / name, *args, **kw)
         written.append(out / name)
 
