@@ -21,7 +21,10 @@ def resolve_device(cfg: ExperimentConfig) -> str:
     return cfg.device
 
 
-LORA_DEFAULTS = {"r": 16, "alpha": 32, "dropout": 0.05, "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj"],
+# target_modules: a list, or lists by the model's `config.model_type`
+LORA_DEFAULTS = {"r": 16, "alpha": 32, "dropout": 0.05,
+                 "target_modules": {"llama": ["q_proj", "k_proj", "v_proj", "o_proj"],
+                                    "gpt_neox": ["query_key_value", "dense"]},
                  "base_dtype": "float16", "gradient_checkpointing": True}
 NPO_REFERENCE = "npo_reference"  # second, frozen adapter holding the NPO reference under LoRA
 
@@ -29,6 +32,17 @@ NPO_REFERENCE = "npo_reference"  # second, frozen adapter holding the NPO refere
 def lora_settings(cfg: ExperimentConfig) -> dict | None:
     """`model.lora` with the defaults filled in; None without LoRA."""
     return None if cfg.model.lora is None else {**LORA_DEFAULTS, **cfg.model.lora}
+
+
+def lora_targets(settings: dict, model_type: str) -> list[str]:
+    """The LoRA target modules of a `model_type` model (`settings` from `lora_settings`)."""
+    targets = settings["target_modules"]
+    if isinstance(targets, dict):
+        if model_type not in targets:
+            raise ValueError(f"model.lora.target_modules has no entry for model type '{model_type}' "
+                             f"(it has {sorted(targets)})")
+        targets = targets[model_type]
+    return list(targets)
 
 
 def is_peft(model) -> bool:
@@ -52,12 +66,13 @@ def _with_lora(model, cfg: ExperimentConfig):
     if s["gradient_checkpointing"]:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     return get_peft_model(model, LoraConfig(r=s["r"], lora_alpha=s["alpha"], lora_dropout=s["dropout"],
-                                            target_modules=list(s["target_modules"]), task_type="CAUSAL_LM"))
+                                            target_modules=lora_targets(s, model.config.model_type), task_type="CAUSAL_LM"))
 
 
 def build_model_and_tokenizer(cfg: ExperimentConfig):
-    """Return (model, tokenizer). 'tiny' builds a small untrained GPT-2 and
-    'tiny_llama' a small untrained Llama (offline). With `model.lora` the
+    """Return (model, tokenizer). 'tiny' builds a small untrained GPT-2,
+    'tiny_llama' a small untrained Llama and 'tiny_neox' a small untrained
+    GPT-NeoX (Pythia's architecture), all offline. With `model.lora` the
     model comes wrapped in LoRA adapters (`_with_lora`)."""
     if cfg.model.name == "tiny_llama":
         from transformers import LlamaConfig, LlamaForCausalLM
@@ -69,6 +84,16 @@ def build_model_and_tokenizer(cfg: ExperimentConfig):
             bos_token_id=None, eos_token_id=None, pad_token_id=None,
         )
         return _with_lora(LlamaForCausalLM(config), cfg), None
+    if cfg.model.name == "tiny_neox":
+        from transformers import GPTNeoXConfig, GPTNeoXForCausalLM
+
+        config = GPTNeoXConfig(
+            vocab_size=cfg.data.vocab_size, hidden_size=64, intermediate_size=128,
+            num_hidden_layers=2, num_attention_heads=4,
+            max_position_embeddings=max(cfg.data.seq_len, cfg.data.max_length, 64),
+            bos_token_id=None, eos_token_id=None,
+        )
+        return _with_lora(GPTNeoXForCausalLM(config), cfg), None
     if cfg.model.name == "tiny":
         from transformers import GPT2Config, GPT2LMHeadModel
 
@@ -123,8 +148,9 @@ class StepStats:
 
     `batches`: batches seen; `skipped_loss`: non-finite loss, no step;
     `skipped_scaler`: the GradScaler skipped the step (inf/NaN gradients
-    under fp16 AMP; its scale was lowered); `nonfinite_grad`: gradient norm
-    not finite (under AMP the same steps; without AMP they are applied);
+    under fp16 AMP; its scale was lowered); `skipped_grad`: no scaler and a
+    non-finite gradient norm, no step (`_update`); `nonfinite_grad`: gradient
+    norm not finite (the steps of `skipped_scaler` or `skipped_grad`);
     `zero_grad`: gradient norm exactly 0 (the step only applies weight
     decay); the scaler's scale (1.0 without AMP) and the mean finite
     gradient norm before clipping.
@@ -132,6 +158,7 @@ class StepStats:
     batches: int = 0
     skipped_loss: int = 0
     skipped_scaler: int = 0
+    skipped_grad: int = 0
     nonfinite_grad: int = 0
     zero_grad: int = 0
     scale_first: float | None = None
@@ -143,14 +170,15 @@ class StepStats:
 
     @property
     def applied(self) -> int:
-        return self.batches - self.skipped_loss - self.skipped_scaler
+        return self.batches - self.skipped_loss - self.skipped_scaler - self.skipped_grad
 
     @property
     def grad_norm_mean(self) -> float | None:
         return self.grad_norm_sum / self.grad_norm_n if self.grad_norm_n else None
 
-    def record(self, grad_norm: float, scale_before: float, scale_after: float) -> None:
+    def record(self, grad_norm: float, scale_before: float, scale_after: float, skipped: bool = False) -> None:
         self.grad_norm_last = grad_norm
+        self.skipped_grad += int(skipped)
         if not math.isfinite(grad_norm):
             self.nonfinite_grad += 1
         else:
@@ -164,7 +192,8 @@ class StepStats:
 
     def summary(self) -> dict:
         return {"batches": self.batches, "applied": self.applied, "skipped_loss": self.skipped_loss,
-                "skipped_scaler": self.skipped_scaler, "nonfinite_grad": self.nonfinite_grad,
+                "skipped_scaler": self.skipped_scaler, "skipped_grad": self.skipped_grad,
+                "nonfinite_grad": self.nonfinite_grad,
                 "zero_grad": self.zero_grad, "scale_first": self.scale_first, "scale_min": self.scale_min,
                 "scale_last": self.scale_last, "grad_norm_mean": self.grad_norm_mean}
 
@@ -172,7 +201,8 @@ class StepStats:
         def fmt(v):
             return "-" if v is None else f"{v:.4g}"
         print(f"[steps] {where}: {self.batches} batches, {self.applied} applied, {self.skipped_loss} non-finite "
-              f"loss, {self.skipped_scaler} scaler skips, {self.nonfinite_grad} non-finite / {self.zero_grad} zero "
+              f"loss, {self.skipped_scaler} scaler skips, {self.skipped_grad} non-finite grad skips (no scaler), "
+              f"{self.nonfinite_grad} non-finite / {self.zero_grad} zero "
               f"grad norms, scale {fmt(self.scale_first)} -> {fmt(self.scale_last)} (min {fmt(self.scale_min)}), "
               f"mean grad norm {fmt(self.grad_norm_mean)}", flush=True)
 
@@ -185,14 +215,18 @@ def _step(loss, model, opt, scaler, stats: StepStats | None = None) -> None:
 
 def _update(model, opt, scaler, stats: StepStats | None = None) -> None:
     """Clip at 1.0 and step; the scaler is a pass-through when disabled. A
-    step the scaler skips (inf/NaN gradients) lowers its scale."""
+    step the scaler skips (inf/NaN gradients) lowers its scale; without a
+    scaler, a step with a non-finite gradient norm is skipped here instead
+    (applying it would turn the weights into NaN)."""
     scaler.unscale_(opt)
     norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     scale = scaler.get_scale()
-    scaler.step(opt)
-    scaler.update()
+    skipped = not scaler.is_enabled() and not bool(torch.isfinite(norm))
+    if not skipped:
+        scaler.step(opt)
+        scaler.update()
     if stats is not None:
-        stats.record(float(norm), scale, scaler.get_scale())
+        stats.record(float(norm), scale, scaler.get_scale(), skipped)
 
 
 def _scored(labels) -> int:

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 import torch
+import yaml
 
 from unlearning import campaign, data, memprobe, unlearn
 from unlearning.config import load_config
@@ -102,6 +103,30 @@ def test_counters_in_training_and_unlearning(capsys):
     assert s.skipped_loss == s.batches and s.applied == 0
 
 
+def test_nonfinite_gradients_are_skipped_without_a_scaler(capsys):
+    cfg, model, splits = _tiny()
+    params = list(model.parameters())
+    before = [p.detach().clone() for p in params]
+    opt = torch.optim.AdamW(params, lr=1e-3)
+    off = torch.amp.GradScaler("cuda", enabled=False)
+    batch = data.collate_for(splits.retain)([splits.retain[i] for i in range(4)])
+    hook = params[0].register_hook(lambda g: g * float("inf"))  # finite loss, non-finite gradient
+    s = unlearn.StepStats(batches=1)
+    unlearn._step(model(**batch).loss, model, opt, off, s)
+    assert (s.skipped_grad, s.nonfinite_grad, s.applied) == (1, 1, 0)
+    assert all(torch.equal(p, b) for p, b in zip(params, before, strict=True))  # no step, no weight decay
+    # train_lm: every step skipped, the weights stay finite and unchanged
+    stats = unlearn.train_lm(model, splits.retain, cfg, "cpu", epochs=1, lr=1e-3)
+    assert stats.skipped_grad == stats.batches > 0 and stats.applied == 0 and stats.skipped_loss == 0
+    assert all(torch.equal(p, b) for p, b in zip(params, before, strict=True))
+    assert f"{stats.batches} non-finite grad skips (no scaler)" in capsys.readouterr().out
+    hook.remove()  # finite gradients step again
+    s = unlearn.StepStats(batches=1)
+    opt.zero_grad()
+    unlearn._step(model(**batch).loss, model, opt, off, s)
+    assert (s.skipped_grad, s.applied) == (0, 1) and not torch.equal(params[0], before[0])
+
+
 def test_campaign_configs_split_gpt2_medium_into_micro_batches():
     for name in ("central", "fed_iid"):
         path = f"configs/revision/{name}.yaml"
@@ -123,9 +148,7 @@ def test_memory_probe_runs_on_cpu(capsys):
 
 
 def test_lora_diag_runs_on_cpu(tmp_path):
-    spec = importlib.util.spec_from_file_location("lora_diag", "scripts/lora_diag.py")
-    diag = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(diag)
+    diag = _diag()
     assert diag.main(["--config", "configs/revision/smoke_cpu.yaml", "--model", "tiny_llama", "--device", "cpu",
                       "--steps", "3", "--arms", "amp", "fp32_adapters", "--out", str(tmp_path)]) == 0
     summary = json.loads((tmp_path / "lora_diag.json").read_text())
@@ -134,6 +157,53 @@ def test_lora_diag_runs_on_cpu(tmp_path):
         assert s["steps"]["applied"] == 3 and s["adapters_with_grad_step1"] == s["trainable_tensors"] > 0
         assert s["lora_B_nonzero_grad_step1"] == s["trainable_tensors"] // 2
         assert s["adapter_delta"] > 0 and s["lora_B_norm"] > 0
+    assert len((tmp_path / "lora_diag_steps.csv").read_text().splitlines()) == 1 + 2 * 3
+
+
+def _diag():
+    spec = importlib.util.spec_from_file_location("lora_diag", "scripts/lora_diag.py")
+    diag = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(diag)
+    return diag
+
+
+def test_lora_targets_by_model_type():
+    s = unlearn.lora_settings(load_config("configs/revision/lora.yaml"))
+    assert unlearn.lora_targets(s, "llama") == ["q_proj", "k_proj", "v_proj", "o_proj"]  # as before
+    assert unlearn.lora_targets(s, "gpt_neox") == ["query_key_value", "dense"]
+    assert unlearn.lora_targets({"target_modules": ["c_attn"]}, "gpt2") == ["c_attn"]
+    pilot = yaml.safe_load(Path("configs/revision/pilot.yaml").read_text())["pilot"]["lora"]
+    assert unlearn.lora_targets(pilot, "llama") == unlearn.lora_targets(s, "llama")
+    assert unlearn.lora_targets(pilot, "gpt_neox") == ["query_key_value", "dense"]
+    with pytest.raises(ValueError, match="no entry for model type 'gpt2'"):
+        unlearn.lora_targets(s, "gpt2")
+    cfg, _, _ = _tiny("tiny_neox")
+    cfg.model.lora = {}
+    model, _ = unlearn.build_model_and_tokenizer(cfg)
+    trainable = [n for n, p in model.named_parameters() if p.requires_grad]
+    assert {n.split(".")[-4] for n in trainable} == {"query_key_value", "dense"}  # not mlp.dense_h_to_4h
+    assert {n.split(".")[-5] for n in trainable} == {"attention"}
+
+
+def test_lora_diag_model_arms_and_eval_check_on_cpu(tmp_path):
+    diag = _diag()
+    assert diag.main(["--config", "configs/revision/smoke_cpu.yaml", "--model", "tiny_neox", "--device", "cpu",
+                      "--steps", "3", "--arms", "pythia_amp", "pythia_fp32", "--eval-check", "--out", str(tmp_path)]) == 0
+    summary = json.loads((tmp_path / "lora_diag.json").read_text())
+    recipe = load_config("configs/revision/smoke_cpu.yaml").model.precision  # pythia_amp keeps the config's
+    assert [(s["arm"], s["model"], s["precision"]) for s in summary] == [("pythia_amp", "tiny_neox", recipe),
+                                                                         ("pythia_fp32", "tiny_neox", "fp32")]
+    assert [s["base_dtypes"] for s in summary] == [["torch.float16"], ["torch.float32"]]
+    for s in summary:
+        assert s["targets"] == ["query_key_value", "dense"] and s["steps"]["applied"] == 3
+        assert s["sec_per_step"] > 0 and len(s["loss_by_window"]) == 1
+    cells = {r["cell"]: r["retain_loss"] for r in json.loads((tmp_path / "lora_diag_eval.json").read_text())}
+    assert list(cells) == [c[0] for c in diag.EVAL_CELLS] and cells["fp32_autocast"] is None  # CUDA only
+    # on CPU every fp32 path gives the same loss and fp16 is within 1% of it
+    assert all(abs(v - cells["fp32"]) < 1e-4 for k, v in cells.items() if k.startswith("fp32") and v is not None)
+    assert abs(cells["fp16"] - cells["fp32"]) < 0.01 * cells["fp32"]
+    assert abs(cells["fp16_eager"] - cells["fp16"]) < 0.01 * cells["fp32"]
+    assert abs(summary[1]["retain_loss_before"] - cells["fp32"]) < 1e-6
     assert len((tmp_path / "lora_diag_steps.csv").read_text().splitlines()) == 1 + 2 * 3
 
 

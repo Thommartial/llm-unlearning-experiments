@@ -43,6 +43,12 @@ DIAGNOSTICS = {
     "05_lora_diag": {"script": "scripts/lora_diag.py", "args": ["--steps", "200"], "out": "results/revision/lora_diag",
                      "what": "the LoRA training diagnostic (`scripts/lora_diag.py`): TinyLlama, 200 steps per arm, "
                              "fp16 AMP against fp32 adapters and three one-change variants, every step logged"},
+    "06_1b_diag": {"script": "scripts/lora_diag.py", "out": "results/revision/1b_diag",
+                   "args": ["--arms", "tinyllama_fp32", "pythia_amp", "pythia_fp32", "--steps", "200", "--eval-check"],
+                   "what": "the second LoRA diagnostic (`scripts/lora_diag.py`): an eval check of TinyLlama and "
+                           "Pythia-1B under fp32 / fp16 weights, autocast, attention kernels and batch size, then "
+                           "200 steps each of TinyLlama with an fp32 base and no autocast, Pythia-1B with fp16 AMP "
+                           "and Pythia-1B in fp32"},
 }
 MEMORY_LIMIT_GIB = 14
 

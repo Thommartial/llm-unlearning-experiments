@@ -47,7 +47,7 @@ pilot:
   retain_tolerance: 0.10         # FedAvg retain loss within 10% of the central model
   rho_factors: [0.5, 1.0, 2.0]
   lora_model: TinyLlama/TinyLlama_v1.1
-  lora: {r: 16, alpha: 32, dropout: 0.05, target_modules: [q_proj, k_proj, v_proj, o_proj], base_dtype: float16,
-         gradient_checkpointing: true}
+  lora: {r: 16, alpha: 32, dropout: 0.05, base_dtype: float16, gradient_checkpointing: true,
+         target_modules: {llama: [q_proj, k_proj, v_proj, o_proj], gpt_neox: [query_key_value, dense]}}
   lora_lrs: [1.0e-4, 2.0e-4]
   base_unlearn_lr: 1.0e-5        # LoRA unlearning rate = this x LoRA rate / full rate

@@ -11,11 +11,12 @@ import yaml
 
 @dataclass
 class ModelConfig:
-    name: str = "gpt2"          # "tiny" / "tiny_llama" build a small untrained GPT-2 / Llama (offline)
+    name: str = "gpt2"          # "tiny" / "tiny_llama" / "tiny_neox": small untrained GPT-2 / Llama / GPT-NeoX (offline)
     dtype: str = "float32"
     precision: str = "fp32"     # fp32 | fp16_amp (fp16 autocast + GradScaler, CUDA only)
     # LoRA via peft (central path): {r, alpha, dropout, target_modules, base_dtype,
-    # gradient_checkpointing}; missing keys take unlearn.LORA_DEFAULTS. None = full fine-tuning.
+    # gradient_checkpointing}; missing keys take unlearn.LORA_DEFAULTS. target_modules is a list
+    # or lists by model type ({llama: [...], gpt_neox: [...]}). None = full fine-tuning.
     lora: dict | None = None
 
 

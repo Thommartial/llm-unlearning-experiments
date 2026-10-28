@@ -40,7 +40,7 @@ def test_lora_model_shape_and_dtypes():
     s = unlearn.lora_settings(cfg)
     assert s == unlearn.LORA_DEFAULTS
     targets = {n.split(".")[-4] for n in trainable}  # ...self_attn.q_proj.lora_A.default.weight
-    assert targets == set(s["target_modules"])
+    assert targets == set(unlearn.lora_targets(s, "llama")) == {"q_proj", "k_proj", "v_proj", "o_proj"}
     a = next(p for n, p in trainable.items() if "lora_A" in n)
     assert a.shape[0] == 16
     assert costs.trainable_params(model) == sum(p.numel() for p in trainable.values())

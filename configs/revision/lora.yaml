@@ -11,7 +11,9 @@ model:
     r: 16
     alpha: 32
     dropout: 0.05
-    target_modules: [q_proj, k_proj, v_proj, o_proj]
+    target_modules:            # by the loaded model's model_type
+      llama: [q_proj, k_proj, v_proj, o_proj]
+      gpt_neox: [query_key_value, dense]   # Pythia
     base_dtype: float16
     gradient_checkpointing: true
 data:
