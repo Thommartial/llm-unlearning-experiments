@@ -12,20 +12,24 @@
 \textbf{Model} & \textbf{Method} & \textbf{Pre} & \textbf{Post} & \textbf{Gap} & \textbf{TPR@1\%} & \textbf{All} & \textbf{Typical} & \textbf{Outlier} \\
 \midrule
 DistilGPT-2 & Retrain & $0.60 \pm 0.02$ & $0.45 \pm 0.02$ & $0.00 \pm 0.00$ & $0.01 \pm 0.01$ & $0.05 \pm 0.02$ & $0.03 \pm 0.02$ & $0.07 \pm 0.05$ \\
-DistilGPT-2 & GA & $0.60 \pm 0.02$ & $0.47 \pm 0.03$ & $0.03 \pm 0.03$ & $0.01 \pm 0.00$ & $0.03 \pm 0.02$ & $0.04 \pm 0.01$ & $0.03 \pm 0.04$ \\
+DistilGPT-2 & GA$^{\dagger}$ & $0.60 \pm 0.02$ & $0.47 \pm 0.03$ & $0.03 \pm 0.03$ & $0.01 \pm 0.00$ & $0.03 \pm 0.02$ & $0.04 \pm 0.01$ & $0.03 \pm 0.04$ \\
 DistilGPT-2 & GD & $0.60 \pm 0.02$ & $0.40 \pm 0.02$ & $-0.04 \pm 0.02$ & $0.01 \pm 0.00$ & $0.10 \pm 0.02$ & $0.09 \pm 0.03$ & $0.10 \pm 0.05$ \\
 DistilGPT-2 & NPO & $0.60 \pm 0.02$ & $0.39 \pm 0.02$ & $-0.06 \pm 0.01$ & $0.00 \pm 0.00$ & $0.11 \pm 0.02$ & $0.11 \pm 0.03$ & $0.07 \pm 0.08$ \\
 GPT-2 & Retrain & $0.63 \pm 0.02$ & $0.44 \pm 0.02$ & $0.00 \pm 0.00$ & $0.02 \pm 0.01$ & $0.06 \pm 0.02$ & $0.03 \pm 0.03$ & $0.08 \pm 0.04$ \\
-GPT-2 & GA & $0.63 \pm 0.02$ & $0.46 \pm 0.04$ & $0.02 \pm 0.05$ & $0.01 \pm 0.00$ & $0.04 \pm 0.04$ & $0.04 \pm 0.03$ & $0.07 \pm 0.04$ \\
+GPT-2 & GA$^{\dagger}$ & $0.63 \pm 0.02$ & $0.46 \pm 0.04$ & $0.02 \pm 0.05$ & $0.01 \pm 0.00$ & $0.04 \pm 0.04$ & $0.04 \pm 0.03$ & $0.07 \pm 0.04$ \\
 GPT-2 & GD & $0.63 \pm 0.02$ & $0.39 \pm 0.04$ & $-0.05 \pm 0.04$ & $0.01 \pm 0.00$ & $0.11 \pm 0.04$ & $0.09 \pm 0.03$ & $0.13 \pm 0.10$ \\
 GPT-2 & NPO & $0.63 \pm 0.02$ & $0.36 \pm 0.10$ & $-0.09 \pm 0.09$ & $0.01 \pm 0.01$ & $0.14 \pm 0.10$ & $0.14 \pm 0.09$ & $0.13 \pm 0.14$ \\
 GPT-2-medium & Retrain & $0.73 \pm 0.02$ & $0.43 \pm 0.02$ & $0.00 \pm 0.00$ & $0.01 \pm 0.00$ & $0.07 \pm 0.02$ & $0.04 \pm 0.02$ & $0.05 \pm 0.03$ \\
-GPT-2-medium & GA & $0.73 \pm 0.02$ & $0.50 \pm 0.04$ & $0.07 \pm 0.04$ & $0.01 \pm 0.01$ & $0.02 \pm 0.02$ & $0.02 \pm 0.02$ & $0.05 \pm 0.06$ \\
+GPT-2-medium & GA$^{\dagger}$ & $0.73 \pm 0.02$ & $0.50 \pm 0.04$ & $0.07 \pm 0.04$ & $0.01 \pm 0.01$ & $0.02 \pm 0.02$ & $0.02 \pm 0.02$ & $0.05 \pm 0.06$ \\
 GPT-2-medium & GD & $0.73 \pm 0.02$ & $0.03 \pm 0.04$ & $-0.40 \pm 0.05$ & $0.00 \pm 0.00$ & $0.47 \pm 0.04$ & $0.47 \pm 0.04$ & $0.47 \pm 0.03$ \\
 GPT-2-medium & NPO & $0.73 \pm 0.02$ & $0.09 \pm 0.10$ & $-0.34 \pm 0.12$ & $0.00 \pm 0.00$ & $0.41 \pm 0.10$ & $0.41 \pm 0.10$ & $0.41 \pm 0.12$ \\
+Pythia-1B (LoRA) & Retrain & $0.58 \pm 0.02$ & $0.44 \pm 0.02$ & $0.00 \pm 0.00$ & $0.01 \pm 0.01$ & $0.06 \pm 0.02$ & $0.03 \pm 0.02$ & $0.09 \pm 0.07$ \\
+Pythia-1B (LoRA) & GA$^{\dagger}$ & $0.58 \pm 0.02$ & $0.43 \pm 0.17$ & $-0.01 \pm 0.17$ & $0.01 \pm 0.00$ & $0.07 \pm 0.17$ & $0.09 \pm 0.17$ & $0.11 \pm 0.13$ \\
+Pythia-1B (LoRA) & GD & $0.58 \pm 0.02$ & $0.06 \pm 0.04$ & $-0.38 \pm 0.05$ & $0.00 \pm 0.01$ & $0.44 \pm 0.04$ & $0.43 \pm 0.06$ & $0.47 \pm 0.02$ \\
+Pythia-1B (LoRA) & NPO & $0.58 \pm 0.02$ & $0.04 \pm 0.03$ & $-0.40 \pm 0.04$ & $0.00 \pm 0.00$ & $0.46 \pm 0.03$ & $0.46 \pm 0.03$ & $0.47 \pm 0.05$ \\
 \bottomrule
 \end{tabular*}
 
 \smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed.\par}
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: model utility 0 in 5/5 seeds (DistilGPT-2, central, GA; GPT-2, central, GA; GPT-2-medium, central, GA; Pythia-1B (LoRA), central, GA).\par}
 \end{table*}

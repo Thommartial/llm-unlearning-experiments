@@ -5,139 +5,157 @@
 \footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllccc@{}}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcc@{}}
 \toprule
-\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Gap} & \textbf{CI excludes 0} \\
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Gap} & \textbf{Verdict} \\
 \midrule
-DistilGPT-2 & central & GA & Loss thr. & primary & $0.027 \pm 0.033$ & no \\
-DistilGPT-2 & central & GA & Loss thr. & holdout10 & $0.115 \pm 0.109$ & yes \\
-DistilGPT-2 & central & GA & Min-K\% & primary & $0.012 \pm 0.035$ & no \\
-DistilGPT-2 & central & GA & Min-K\% & holdout10 & $0.095 \pm 0.063$ & yes \\
-DistilGPT-2 & central & GA & Ref.-calib. & primary & $0.029 \pm 0.049$ & no \\
-DistilGPT-2 & central & GA & Ref.-calib. & holdout10 & $-0.025 \pm 0.106$ & no \\
-DistilGPT-2 & central & GD & Loss thr. & primary & $-0.045 \pm 0.020$ & yes \\
-DistilGPT-2 & central & GD & Loss thr. & holdout10 & $0.056 \pm 0.015$ & yes \\
-DistilGPT-2 & central & GD & Min-K\% & primary & $-0.040 \pm 0.017$ & yes \\
-DistilGPT-2 & central & GD & Min-K\% & holdout10 & $0.088 \pm 0.017$ & yes \\
-DistilGPT-2 & central & GD & Ref.-calib. & primary & $-0.053 \pm 0.036$ & yes \\
-DistilGPT-2 & central & GD & Ref.-calib. & holdout10 & $-0.011 \pm 0.020$ & no \\
-DistilGPT-2 & central & NPO & Loss thr. & primary & $-0.056 \pm 0.012$ & yes \\
-DistilGPT-2 & central & NPO & Loss thr. & holdout10 & $0.001 \pm 0.039$ & no \\
-DistilGPT-2 & central & NPO & Min-K\% & primary & $-0.030 \pm 0.026$ & yes \\
-DistilGPT-2 & central & NPO & Min-K\% & holdout10 & $0.057 \pm 0.034$ & yes \\
-DistilGPT-2 & central & NPO & Ref.-calib. & primary & $-0.052 \pm 0.015$ & yes \\
-DistilGPT-2 & central & NPO & Ref.-calib. & holdout10 & $-0.056 \pm 0.042$ & yes \\
-GPT-2 & central & GA & Loss thr. & primary & $0.023 \pm 0.046$ & no \\
-GPT-2 & central & GA & Loss thr. & holdout10 & $0.123 \pm 0.099$ & yes \\
-GPT-2 & central & GA & Min-K\% & primary & $0.022 \pm 0.041$ & no \\
-GPT-2 & central & GA & Min-K\% & holdout10 & $0.137 \pm 0.031$ & yes \\
-GPT-2 & central & GA & Ref.-calib. & primary & $0.028 \pm 0.047$ & no \\
-GPT-2 & central & GA & Ref.-calib. & holdout10 & $-0.019 \pm 0.101$ & no \\
-GPT-2 & central & GD & Loss thr. & primary & $-0.050 \pm 0.038$ & yes \\
-GPT-2 & central & GD & Loss thr. & holdout10 & $0.048 \pm 0.056$ & no \\
-GPT-2 & central & GD & Min-K\% & primary & $-0.053 \pm 0.047$ & yes \\
-GPT-2 & central & GD & Min-K\% & holdout10 & $0.070 \pm 0.059$ & yes \\
-GPT-2 & central & GD & Ref.-calib. & primary & $-0.060 \pm 0.053$ & yes \\
-GPT-2 & central & GD & Ref.-calib. & holdout10 & $-0.023 \pm 0.082$ & no \\
-GPT-2 & central & NPO & Loss thr. & primary & $-0.086 \pm 0.085$ & yes \\
-GPT-2 & central & NPO & Loss thr. & holdout10 & $-0.030 \pm 0.097$ & no \\
-GPT-2 & central & NPO & Min-K\% & primary & $-0.083 \pm 0.106$ & no \\
-GPT-2 & central & NPO & Min-K\% & holdout10 & $-0.007 \pm 0.116$ & no \\
-GPT-2 & central & NPO & Ref.-calib. & primary & $-0.096 \pm 0.107$ & no \\
-GPT-2 & central & NPO & Ref.-calib. & holdout10 & $-0.111 \pm 0.144$ & no \\
-GPT-2-medium & central & GA & Loss thr. & primary & $0.069 \pm 0.040$ & yes \\
-GPT-2-medium & central & GA & Loss thr. & holdout10 & $0.140 \pm 0.116$ & yes \\
-GPT-2-medium & central & GA & Min-K\% & primary & $0.059 \pm 0.027$ & yes \\
-GPT-2-medium & central & GA & Min-K\% & holdout10 & $0.135 \pm 0.121$ & yes \\
-GPT-2-medium & central & GA & Ref.-calib. & primary & $0.056 \pm 0.043$ & yes \\
-GPT-2-medium & central & GA & Ref.-calib. & holdout10 & $-0.016 \pm 0.116$ & no \\
-GPT-2-medium & central & GD & Loss thr. & primary & $-0.399 \pm 0.051$ & yes \\
-GPT-2-medium & central & GD & Loss thr. & holdout10 & $-0.360 \pm 0.050$ & yes \\
-GPT-2-medium & central & GD & Min-K\% & primary & $-0.379 \pm 0.041$ & yes \\
-GPT-2-medium & central & GD & Min-K\% & holdout10 & $-0.323 \pm 0.057$ & yes \\
-GPT-2-medium & central & GD & Ref.-calib. & primary & $-0.419 \pm 0.047$ & yes \\
-GPT-2-medium & central & GD & Ref.-calib. & holdout10 & $-0.544 \pm 0.048$ & yes \\
-GPT-2-medium & central & NPO & Loss thr. & primary & $-0.338 \pm 0.117$ & yes \\
-GPT-2-medium & central & NPO & Loss thr. & holdout10 & $-0.283 \pm 0.120$ & yes \\
-GPT-2-medium & central & NPO & Min-K\% & primary & $-0.321 \pm 0.110$ & yes \\
-GPT-2-medium & central & NPO & Min-K\% & holdout10 & $-0.251 \pm 0.120$ & yes \\
-GPT-2-medium & central & NPO & Ref.-calib. & primary & $-0.358 \pm 0.117$ & yes \\
-GPT-2-medium & central & NPO & Ref.-calib. & holdout10 & $-0.456 \pm 0.130$ & yes \\
-GPT-2 & by\_author\_K5 & Client GA, upload & Loss thr. & primary & $-0.016 \pm 0.101$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.067 \pm 0.276$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, upload & Min-K\% & primary & $-0.052 \pm 0.127$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.061 \pm 0.197$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, upload & Ref.-calib. & primary & $-0.007 \pm 0.086$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.084 \pm 0.280$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, global & Loss thr. & primary & $0.000 \pm 0.032$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, global & Loss thr. & holdout10 & $0.006 \pm 0.023$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, global & Min-K\% & primary & $0.004 \pm 0.030$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, global & Min-K\% & holdout10 & $0.014 \pm 0.026$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, global & Ref.-calib. & primary & $0.005 \pm 0.061$ & no \\
-GPT-2 & by\_author\_K5 & Client GA, global & Ref.-calib. & holdout10 & $-0.005 \pm 0.082$ & no \\
-GPT-2 & iid\_K3 & Client GA, upload & Loss thr. & primary & $-0.008 \pm 0.029$ & no \\
-GPT-2 & iid\_K3 & Client GA, upload & Loss thr. & holdout10 & $0.139 \pm 0.136$ & yes \\
-GPT-2 & iid\_K3 & Client GA, upload & Min-K\% & primary & $-0.032 \pm 0.110$ & no \\
-GPT-2 & iid\_K3 & Client GA, upload & Min-K\% & holdout10 & $0.131 \pm 0.157$ & no \\
-GPT-2 & iid\_K3 & Client GA, upload & Ref.-calib. & primary & $-0.009 \pm 0.013$ & no \\
-GPT-2 & iid\_K3 & Client GA, upload & Ref.-calib. & holdout10 & $0.001 \pm 0.155$ & no \\
-GPT-2 & iid\_K3 & Client GA, global & Loss thr. & primary & $-0.019 \pm 0.015$ & yes \\
-GPT-2 & iid\_K3 & Client GA, global & Loss thr. & holdout10 & $-0.013 \pm 0.023$ & no \\
-GPT-2 & iid\_K3 & Client GA, global & Min-K\% & primary & $-0.010 \pm 0.016$ & no \\
-GPT-2 & iid\_K3 & Client GA, global & Min-K\% & holdout10 & $-0.006 \pm 0.009$ & no \\
-GPT-2 & iid\_K3 & Client GA, global & Ref.-calib. & primary & $-0.036 \pm 0.028$ & yes \\
-GPT-2 & iid\_K3 & Client GA, global & Ref.-calib. & holdout10 & $-0.036 \pm 0.030$ & yes \\
-GPT-2 & iid\_K10 & Client GA, upload & Loss thr. & primary & $-0.057 \pm 0.136$ & no \\
-GPT-2 & iid\_K10 & Client GA, upload & Loss thr. & holdout10 & $0.044 \pm 0.224$ & no \\
-GPT-2 & iid\_K10 & Client GA, upload & Min-K\% & primary & $-0.068 \pm 0.078$ & no \\
-GPT-2 & iid\_K10 & Client GA, upload & Min-K\% & holdout10 & $0.052 \pm 0.129$ & no \\
-GPT-2 & iid\_K10 & Client GA, upload & Ref.-calib. & primary & $-0.051 \pm 0.108$ & no \\
-GPT-2 & iid\_K10 & Client GA, upload & Ref.-calib. & holdout10 & $-0.132 \pm 0.220$ & no \\
-GPT-2 & iid\_K10 & Client GA, global & Loss thr. & primary & $0.042 \pm 0.008$ & yes \\
-GPT-2 & iid\_K10 & Client GA, global & Loss thr. & holdout10 & $0.045 \pm 0.001$ & yes \\
-GPT-2 & iid\_K10 & Client GA, global & Min-K\% & primary & $0.048 \pm 0.010$ & yes \\
-GPT-2 & iid\_K10 & Client GA, global & Min-K\% & holdout10 & $0.050 \pm 0.002$ & yes \\
-GPT-2 & iid\_K10 & Client GA, global & Ref.-calib. & primary & $0.110 \pm 0.011$ & yes \\
-GPT-2 & iid\_K10 & Client GA, global & Ref.-calib. & holdout10 & $0.104 \pm 0.001$ & yes \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & Loss thr. & primary & $-0.020 \pm 0.056$ & no \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.038 \pm 0.077$ & no \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & Min-K\% & primary & $-0.039 \pm 0.059$ & no \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.050 \pm 0.058$ & no \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & primary & $-0.016 \pm 0.043$ & no \\
-DistilGPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.107 \pm 0.076$ & yes \\
-DistilGPT-2 & iid\_K5 & Client GA, global & Loss thr. & primary & $-0.016 \pm 0.005$ & yes \\
-DistilGPT-2 & iid\_K5 & Client GA, global & Loss thr. & holdout10 & $-0.013 \pm 0.012$ & yes \\
-DistilGPT-2 & iid\_K5 & Client GA, global & Min-K\% & primary & $-0.009 \pm 0.008$ & yes \\
-DistilGPT-2 & iid\_K5 & Client GA, global & Min-K\% & holdout10 & $0.001 \pm 0.006$ & no \\
-DistilGPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & primary & $-0.030 \pm 0.013$ & yes \\
-DistilGPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & holdout10 & $-0.047 \pm 0.040$ & yes \\
-GPT-2 & iid\_K5 & Client GA, upload & Loss thr. & primary & $-0.031 \pm 0.051$ & no \\
-GPT-2 & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.041 \pm 0.083$ & no \\
-GPT-2 & iid\_K5 & Client GA, upload & Min-K\% & primary & $-0.044 \pm 0.032$ & yes \\
-GPT-2 & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.054 \pm 0.087$ & no \\
-GPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & primary & $-0.023 \pm 0.050$ & no \\
-GPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.112 \pm 0.075$ & yes \\
-GPT-2 & iid\_K5 & Client GA, global & Loss thr. & primary & $0.005 \pm 0.009$ & no \\
-GPT-2 & iid\_K5 & Client GA, global & Loss thr. & holdout10 & $0.009 \pm 0.010$ & no \\
-GPT-2 & iid\_K5 & Client GA, global & Min-K\% & primary & $0.010 \pm 0.013$ & no \\
-GPT-2 & iid\_K5 & Client GA, global & Min-K\% & holdout10 & $0.015 \pm 0.011$ & yes \\
-GPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & primary & $0.010 \pm 0.018$ & no \\
-GPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & holdout10 & $0.000 \pm 0.028$ & no \\
-GPT-2-medium & iid\_K5 & Client GA, upload & Loss thr. & primary & $0.026 \pm 0.051$ & no \\
-GPT-2-medium & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.086 \pm 0.084$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, upload & Min-K\% & primary & $0.021 \pm 0.067$ & no \\
-GPT-2-medium & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.130 \pm 0.076$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, upload & Ref.-calib. & primary & $0.019 \pm 0.038$ & no \\
-GPT-2-medium & iid\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.080 \pm 0.072$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, global & Loss thr. & primary & $0.044 \pm 0.015$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, global & Loss thr. & holdout10 & $0.047 \pm 0.017$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, global & Min-K\% & primary & $0.049 \pm 0.015$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, global & Min-K\% & holdout10 & $0.052 \pm 0.017$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, global & Ref.-calib. & primary & $0.092 \pm 0.034$ & yes \\
-GPT-2-medium & iid\_K5 & Client GA, global & Ref.-calib. & holdout10 & $0.091 \pm 0.032$ & yes \\
+DistilGPT-2 & central & GA$^{\dagger}$ & Loss thr. & primary & $0.027 \pm 0.033$ & inconclusive \\
+DistilGPT-2 & central & GA$^{\dagger}$ & Loss thr. & holdout10 & $0.115 \pm 0.109$ & above retrain \\
+DistilGPT-2 & central & GA$^{\dagger}$ & Min-K\% & primary & $0.012 \pm 0.035$ & inconclusive \\
+DistilGPT-2 & central & GA$^{\dagger}$ & Min-K\% & holdout10 & $0.095 \pm 0.063$ & above retrain \\
+DistilGPT-2 & central & GA$^{\dagger}$ & Ref.-calib. & primary & $0.029 \pm 0.049$ & inconclusive \\
+DistilGPT-2 & central & GA$^{\dagger}$ & Ref.-calib. & holdout10 & $-0.025 \pm 0.106$ & inconclusive \\
+DistilGPT-2 & central & GD & Loss thr. & primary & $-0.045 \pm 0.020$ & below retrain \\
+DistilGPT-2 & central & GD & Loss thr. & holdout10 & $0.056 \pm 0.015$ & above retrain \\
+DistilGPT-2 & central & GD & Min-K\% & primary & $-0.040 \pm 0.017$ & below retrain \\
+DistilGPT-2 & central & GD & Min-K\% & holdout10 & $0.088 \pm 0.017$ & above retrain \\
+DistilGPT-2 & central & GD & Ref.-calib. & primary & $-0.053 \pm 0.036$ & below retrain \\
+DistilGPT-2 & central & GD & Ref.-calib. & holdout10 & $-0.011 \pm 0.020$ & inconclusive \\
+DistilGPT-2 & central & NPO & Loss thr. & primary & $-0.056 \pm 0.012$ & below retrain \\
+DistilGPT-2 & central & NPO & Loss thr. & holdout10 & $0.001 \pm 0.039$ & inconclusive \\
+DistilGPT-2 & central & NPO & Min-K\% & primary & $-0.030 \pm 0.026$ & below retrain \\
+DistilGPT-2 & central & NPO & Min-K\% & holdout10 & $0.057 \pm 0.034$ & above retrain \\
+DistilGPT-2 & central & NPO & Ref.-calib. & primary & $-0.052 \pm 0.015$ & below retrain \\
+DistilGPT-2 & central & NPO & Ref.-calib. & holdout10 & $-0.056 \pm 0.042$ & below retrain \\
+GPT-2 & central & GA$^{\dagger}$ & Loss thr. & primary & $0.023 \pm 0.046$ & inconclusive \\
+GPT-2 & central & GA$^{\dagger}$ & Loss thr. & holdout10 & $0.123 \pm 0.099$ & above retrain \\
+GPT-2 & central & GA$^{\dagger}$ & Min-K\% & primary & $0.022 \pm 0.041$ & inconclusive \\
+GPT-2 & central & GA$^{\dagger}$ & Min-K\% & holdout10 & $0.137 \pm 0.031$ & above retrain \\
+GPT-2 & central & GA$^{\dagger}$ & Ref.-calib. & primary & $0.028 \pm 0.047$ & inconclusive \\
+GPT-2 & central & GA$^{\dagger}$ & Ref.-calib. & holdout10 & $-0.019 \pm 0.101$ & inconclusive \\
+GPT-2 & central & GD & Loss thr. & primary & $-0.050 \pm 0.038$ & below retrain \\
+GPT-2 & central & GD & Loss thr. & holdout10 & $0.048 \pm 0.056$ & inconclusive \\
+GPT-2 & central & GD & Min-K\% & primary & $-0.053 \pm 0.047$ & below retrain \\
+GPT-2 & central & GD & Min-K\% & holdout10 & $0.070 \pm 0.059$ & above retrain \\
+GPT-2 & central & GD & Ref.-calib. & primary & $-0.060 \pm 0.053$ & below retrain \\
+GPT-2 & central & GD & Ref.-calib. & holdout10 & $-0.023 \pm 0.082$ & inconclusive \\
+GPT-2 & central & NPO & Loss thr. & primary & $-0.086 \pm 0.085$ & below retrain \\
+GPT-2 & central & NPO & Loss thr. & holdout10 & $-0.030 \pm 0.097$ & inconclusive \\
+GPT-2 & central & NPO & Min-K\% & primary & $-0.083 \pm 0.106$ & inconclusive \\
+GPT-2 & central & NPO & Min-K\% & holdout10 & $-0.007 \pm 0.116$ & inconclusive \\
+GPT-2 & central & NPO & Ref.-calib. & primary & $-0.096 \pm 0.107$ & inconclusive \\
+GPT-2 & central & NPO & Ref.-calib. & holdout10 & $-0.111 \pm 0.144$ & inconclusive \\
+GPT-2-medium & central & GA$^{\dagger}$ & Loss thr. & primary & $0.069 \pm 0.040$ & above retrain \\
+GPT-2-medium & central & GA$^{\dagger}$ & Loss thr. & holdout10 & $0.140 \pm 0.116$ & above retrain \\
+GPT-2-medium & central & GA$^{\dagger}$ & Min-K\% & primary & $0.059 \pm 0.027$ & above retrain \\
+GPT-2-medium & central & GA$^{\dagger}$ & Min-K\% & holdout10 & $0.135 \pm 0.121$ & above retrain \\
+GPT-2-medium & central & GA$^{\dagger}$ & Ref.-calib. & primary & $0.056 \pm 0.043$ & above retrain \\
+GPT-2-medium & central & GA$^{\dagger}$ & Ref.-calib. & holdout10 & $-0.016 \pm 0.116$ & inconclusive \\
+GPT-2-medium & central & GD & Loss thr. & primary & $-0.399 \pm 0.051$ & below retrain \\
+GPT-2-medium & central & GD & Loss thr. & holdout10 & $-0.360 \pm 0.050$ & below retrain \\
+GPT-2-medium & central & GD & Min-K\% & primary & $-0.379 \pm 0.041$ & below retrain \\
+GPT-2-medium & central & GD & Min-K\% & holdout10 & $-0.323 \pm 0.057$ & below retrain \\
+GPT-2-medium & central & GD & Ref.-calib. & primary & $-0.419 \pm 0.047$ & below retrain \\
+GPT-2-medium & central & GD & Ref.-calib. & holdout10 & $-0.544 \pm 0.048$ & below retrain \\
+GPT-2-medium & central & NPO & Loss thr. & primary & $-0.338 \pm 0.117$ & below retrain \\
+GPT-2-medium & central & NPO & Loss thr. & holdout10 & $-0.283 \pm 0.120$ & below retrain \\
+GPT-2-medium & central & NPO & Min-K\% & primary & $-0.321 \pm 0.110$ & below retrain \\
+GPT-2-medium & central & NPO & Min-K\% & holdout10 & $-0.251 \pm 0.120$ & below retrain \\
+GPT-2-medium & central & NPO & Ref.-calib. & primary & $-0.358 \pm 0.117$ & below retrain \\
+GPT-2-medium & central & NPO & Ref.-calib. & holdout10 & $-0.456 \pm 0.130$ & below retrain \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Loss thr. & primary & $-0.016 \pm 0.101$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.067 \pm 0.276$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Min-K\% & primary & $-0.052 \pm 0.127$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.061 \pm 0.197$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Ref.-calib. & primary & $-0.007 \pm 0.086$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.084 \pm 0.280$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, global & Loss thr. & primary & $0.000 \pm 0.032$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, global & Loss thr. & holdout10 & $0.006 \pm 0.023$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, global & Min-K\% & primary & $0.004 \pm 0.030$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, global & Min-K\% & holdout10 & $0.014 \pm 0.026$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, global & Ref.-calib. & primary & $0.005 \pm 0.061$ & inconclusive \\
+GPT-2 & by\_author\_K5 & Client GA, global & Ref.-calib. & holdout10 & $-0.005 \pm 0.082$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, upload & Loss thr. & primary & $-0.008 \pm 0.029$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, upload & Loss thr. & holdout10 & $0.139 \pm 0.136$ & above retrain \\
+GPT-2 & iid\_K3 & Client GA, upload & Min-K\% & primary & $-0.032 \pm 0.110$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, upload & Min-K\% & holdout10 & $0.131 \pm 0.157$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, upload & Ref.-calib. & primary & $-0.009 \pm 0.013$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, upload & Ref.-calib. & holdout10 & $0.001 \pm 0.155$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, global & Loss thr. & primary & $-0.019 \pm 0.015$ & below retrain \\
+GPT-2 & iid\_K3 & Client GA, global & Loss thr. & holdout10 & $-0.013 \pm 0.023$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, global & Min-K\% & primary & $-0.010 \pm 0.016$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, global & Min-K\% & holdout10 & $-0.006 \pm 0.009$ & inconclusive \\
+GPT-2 & iid\_K3 & Client GA, global & Ref.-calib. & primary & $-0.036 \pm 0.028$ & below retrain \\
+GPT-2 & iid\_K3 & Client GA, global & Ref.-calib. & holdout10 & $-0.036 \pm 0.030$ & below retrain \\
+GPT-2 & iid\_K10 & Client GA, upload & Loss thr. & primary & $-0.057 \pm 0.136$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, upload & Loss thr. & holdout10 & $0.044 \pm 0.224$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, upload & Min-K\% & primary & $-0.068 \pm 0.078$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, upload & Min-K\% & holdout10 & $0.052 \pm 0.129$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, upload & Ref.-calib. & primary & $-0.051 \pm 0.108$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, upload & Ref.-calib. & holdout10 & $-0.132 \pm 0.220$ & inconclusive \\
+GPT-2 & iid\_K10 & Client GA, global & Loss thr. & primary & $0.042 \pm 0.008$ & above retrain \\
+GPT-2 & iid\_K10 & Client GA, global & Loss thr. & holdout10 & $0.045 \pm 0.001$ & above retrain \\
+GPT-2 & iid\_K10 & Client GA, global & Min-K\% & primary & $0.048 \pm 0.010$ & above retrain \\
+GPT-2 & iid\_K10 & Client GA, global & Min-K\% & holdout10 & $0.050 \pm 0.002$ & above retrain \\
+GPT-2 & iid\_K10 & Client GA, global & Ref.-calib. & primary & $0.110 \pm 0.011$ & above retrain \\
+GPT-2 & iid\_K10 & Client GA, global & Ref.-calib. & holdout10 & $0.104 \pm 0.001$ & above retrain \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Loss thr. & primary & $-0.020 \pm 0.056$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.038 \pm 0.077$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Min-K\% & primary & $-0.039 \pm 0.059$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.050 \pm 0.058$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & primary & $-0.016 \pm 0.043$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.107 \pm 0.076$ & below retrain \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Loss thr. & primary & $-0.016 \pm 0.005$ & below retrain \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Loss thr. & holdout10 & $-0.013 \pm 0.012$ & below retrain \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Min-K\% & primary & $-0.009 \pm 0.008$ & below retrain \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Min-K\% & holdout10 & $0.001 \pm 0.006$ & inconclusive \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & primary & $-0.030 \pm 0.013$ & below retrain \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & holdout10 & $-0.047 \pm 0.040$ & below retrain \\
+GPT-2 & iid\_K5 & Client GA, upload & Loss thr. & primary & $-0.031 \pm 0.051$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.041 \pm 0.083$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, upload & Min-K\% & primary & $-0.044 \pm 0.032$ & below retrain \\
+GPT-2 & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.054 \pm 0.087$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & primary & $-0.023 \pm 0.050$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.112 \pm 0.075$ & below retrain \\
+GPT-2 & iid\_K5 & Client GA, global & Loss thr. & primary & $0.005 \pm 0.009$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, global & Loss thr. & holdout10 & $0.009 \pm 0.010$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, global & Min-K\% & primary & $0.010 \pm 0.013$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, global & Min-K\% & holdout10 & $0.015 \pm 0.011$ & above retrain \\
+GPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & primary & $0.010 \pm 0.018$ & inconclusive \\
+GPT-2 & iid\_K5 & Client GA, global & Ref.-calib. & holdout10 & $0.000 \pm 0.028$ & inconclusive \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Loss thr. & primary & $0.026 \pm 0.051$ & inconclusive \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & $0.086 \pm 0.084$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Min-K\% & primary & $0.021 \pm 0.067$ & inconclusive \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & $0.130 \pm 0.076$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Ref.-calib. & primary & $0.019 \pm 0.038$ & inconclusive \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Ref.-calib. & holdout10 & $-0.080 \pm 0.072$ & below retrain \\
+GPT-2-medium & iid\_K5 & Client GA, global & Loss thr. & primary & $0.044 \pm 0.015$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, global & Loss thr. & holdout10 & $0.047 \pm 0.017$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, global & Min-K\% & primary & $0.049 \pm 0.015$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, global & Min-K\% & holdout10 & $0.052 \pm 0.017$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, global & Ref.-calib. & primary & $0.092 \pm 0.034$ & above retrain \\
+GPT-2-medium & iid\_K5 & Client GA, global & Ref.-calib. & holdout10 & $0.091 \pm 0.032$ & above retrain \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & Loss thr. & primary & $-0.010 \pm 0.169$ & inconclusive \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & Loss thr. & holdout10 & $0.080 \pm 0.240$ & inconclusive \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & Min-K\% & primary & $0.024 \pm 0.174$ & inconclusive \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & Min-K\% & holdout10 & $0.038 \pm 0.199$ & inconclusive \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & Ref.-calib. & primary & $-0.018 \pm 0.186$ & inconclusive \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & Ref.-calib. & holdout10 & $-0.082 \pm 0.263$ & inconclusive \\
+Pythia-1B (LoRA) & central & GD & Loss thr. & primary & $-0.383 \pm 0.051$ & below retrain \\
+Pythia-1B (LoRA) & central & GD & Loss thr. & holdout10 & $-0.321 \pm 0.061$ & below retrain \\
+Pythia-1B (LoRA) & central & GD & Min-K\% & primary & $-0.366 \pm 0.047$ & below retrain \\
+Pythia-1B (LoRA) & central & GD & Min-K\% & holdout10 & $-0.294 \pm 0.063$ & below retrain \\
+Pythia-1B (LoRA) & central & GD & Ref.-calib. & primary & $-0.404 \pm 0.053$ & below retrain \\
+Pythia-1B (LoRA) & central & GD & Ref.-calib. & holdout10 & $-0.525 \pm 0.065$ & below retrain \\
+Pythia-1B (LoRA) & central & NPO & Loss thr. & primary & $-0.401 \pm 0.040$ & below retrain \\
+Pythia-1B (LoRA) & central & NPO & Loss thr. & holdout10 & $-0.346 \pm 0.049$ & below retrain \\
+Pythia-1B (LoRA) & central & NPO & Min-K\% & primary & $-0.385 \pm 0.032$ & below retrain \\
+Pythia-1B (LoRA) & central & NPO & Min-K\% & holdout10 & $-0.320 \pm 0.046$ & below retrain \\
+Pythia-1B (LoRA) & central & NPO & Ref.-calib. & primary & $-0.421 \pm 0.056$ & below retrain \\
+Pythia-1B (LoRA) & central & NPO & Ref.-calib. & holdout10 & $-0.547 \pm 0.072$ & below retrain \\
 \bottomrule
 \end{tabular*}
 
 \smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed.\par}
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: above retrain (CI lower bound $>0$, supports H1), below retrain (CI upper bound $<0$, contradicts H1) or inconclusive. $^{\dagger}$Model collapsed: model utility 0 in 5/5 seeds (DistilGPT-2, central, GA; GPT-2, central, GA; GPT-2-medium, central, GA; Pythia-1B (LoRA), central, GA).\par}
 \end{table*}

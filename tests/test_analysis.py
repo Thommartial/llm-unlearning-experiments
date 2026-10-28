@@ -159,9 +159,10 @@ def test_h1_two_sided_distance_per_seed():
     for seed, gap in enumerate(gaps):
         for method, g, fq in (("retrain", 0.0, 1.0), ("npo", gap, 0.01 * (seed + 1))):
             rows.append(_row(model="gpt2", seed=seed, method=method, gap_post=g, forget_quality_post=fq,
-                             gap_post_typical_basediff=g / 2, gap_post_outlier_basediff=-abs(g)))
+                             auc_post=0.5 + g, gap_post_typical_basediff=g / 2, auc_post_typical_basediff=0.4 + g / 2,
+                             gap_post_outlier_basediff=-abs(g), auc_post_outlier_basediff=0.6 - abs(g)))
         rows.append(_row(campaign="fed_iid", kind="federated", variant="iid_K5", model="gpt2", seed=seed,
-                         method="client_ga_upload", gap_post=-gap, forget_quality_post=None))
+                         method="client_ga_upload", gap_post=-gap, auc_post=0.8 - gap, forget_quality_post=None))
     df = analysis._prepare(pd.DataFrame(rows))
     h = analysis.h1_two_sided(df)
     assert "retrain" not in set(h["method"])
@@ -170,13 +171,18 @@ def test_h1_two_sided_distance_per_seed():
     assert r["mean"] == pytest.approx(0.16) and r["half"] == pytest.approx(want["half"]) and r["n"] == 5
     assert r["gap_mean"] == pytest.approx(np.mean(gaps)) and r["n_below_retrain"] == 3
     assert r["forget_quality_mean"] == pytest.approx(0.03) and r["role"] == "overall"
+    leak = analysis.t_ci(np.array(gaps) / 0.5)  # MUSE's PrivLeak: gap / AUC_retrain, per seed
+    assert r["privleak_mean"] == pytest.approx(leak["mean"]) and r["privleak_half"] == pytest.approx(leak["half"])
+    assert (r["privleak_lo"], r["privleak_hi"]) == (pytest.approx(leak["lo"]), pytest.approx(leak["hi"]))
     typ = h[(h["kind"] == "central") & (h["stratum"] == "typical_basediff")].iloc[0]
     out = h[(h["kind"] == "central") & (h["stratum"] == "outlier_basediff")].iloc[0]
     assert typ["mean"] == pytest.approx(0.08) and typ["role"] == "primary"
+    assert typ["privleak_mean"] == pytest.approx(np.mean(np.array(gaps) / 2 / 0.4))  # the stratum's own retrain AUC
     assert out["mean"] == pytest.approx(0.16) and out["n_below_retrain"] == 5
     assert set(h["stratum"]) == {"all", "typical_basediff", "outlier_basediff"}  # only the columns present
     fed = h[(h["kind"] == "federated") & (h["stratum"] == "all")].iloc[0]
     assert fed["mean"] == pytest.approx(0.16) and fed["n_below_retrain"] == 2 and np.isnan(fed["forget_quality_mean"])
+    assert fed["privleak_mean"] == pytest.approx(np.mean(-np.array(gaps) / 0.8))  # against the federated retrain
     h1 = analysis.h1(df)  # the pre-registered one-sided H1 is unchanged: signed mean, CI includes 0
     r = h1[h1["kind"] == "central"].iloc[0]
     assert r["mean"] == pytest.approx(np.mean(gaps)) and r["verdict"] == "inconclusive"
@@ -298,6 +304,8 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     assert set(two["kind"]) == {"central", "federated"} and (two["mean"] >= 0).all()
     tex = (tmp_path / "tab" / "tab_h1_two_sided.tex").read_text()
     assert "Exploratory (post hoc)" in tex and "\\label{tab:h1-two-sided}" in tex and "Forget quality" in tex
+    assert "MUSE's PrivLeak~\\cite{shi2024muse}" in tex and "PrivLeak (\\%)" in tex
+    assert two["privleak_mean"].notna().any()
     assert {"tab_h1_two_sided.tex", "tab_h1_paper.tex", "tab_h1_two_sided_paper.tex"} <= names
     full, paper = ((tmp_path / "tab" / f"tab_h1{s}.tex").read_text() for s in ("", "_paper"))
     assert "\\textbf{Verdict}" in full and "above retrain" in full and "CI excludes" not in full
@@ -307,8 +315,44 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     assert paper.count("above retrain") == 3 + 4 + 1 and full.count("above retrain") == 6 + 4 + 1
     two = (tmp_path / "tab" / "tab_h1_two_sided_paper.tex").read_text()
     assert "Exploratory (post hoc)" in two and "\\ref{tab:h1-paper}" in two and "Ref.-calib." not in two
+    assert "PrivLeak (\\%)" in two and "\\cite{shi2024muse}" in two
+    update = (tmp_path / "tab" / "tab_update.tex").read_text()
+    assert "nan" not in update and "release" in update  # central rows have no view column
     h3 = (tmp_path / "tab" / "tab_h3.tex").read_text()
     assert "outliers higher" in h3 and "CI excl." not in h3
+
+
+def test_collapsed_models_are_marked_in_every_table(tmp_path):
+    """Model utility 0 in every seed marks the method (from the data); some zero seeds do not."""
+    rows = []
+    for seed in SEEDS:
+        for method, mu, gap in (("retrain", 0.3, 0.0), ("gradient_ascent", 0.0, -0.1 - 0.01 * seed),
+                                ("gradient_difference", 0.0 if seed < 3 else 0.1, -0.3)):
+            rows.append(_row(campaign="lora", variant="lora", model="EleutherAI/pythia-1b", seed=seed, method=method,
+                             auc_post=0.45 + gap, gap_post=gap, adv_post=0.05, model_utility_post=mu,
+                             gap_post_outlier_basediff=gap, gap_post_typical_basediff=gap,
+                             adv_post_outlier_basediff=0.1, adv_post_typical_basediff=0.1))
+    pd.DataFrame(rows).to_csv(tmp_path / "lora.csv", index=False)
+    a = analysis.analyse(tmp_path, tmp_path / "fig", tmp_path / "tab")
+    c = pd.read_csv(tmp_path / "tab" / "collapsed.csv")
+    assert c[["method", "zero", "rows"]].values.tolist() == [["gradient_ascent", 5, 5]]
+    note = "Model collapsed: model utility 0 in 5/5 seeds (Pythia-1B (LoRA), central, GA)."
+    with_ga = []
+    for p in a["tables"]:
+        text = p.read_text()
+        if "& GA" in text:  # every table with GA rows
+            with_ga.append(p.name)
+            assert "GA$^{\\dagger}$" in text and note in text, p.name
+            assert "GD$^{\\dagger}$" not in text, p.name  # model utility 0 in only 3 of 5 seeds
+        assert "& lora &" not in text, p.name  # Run reads central for the LoRA campaign
+    assert {"tab_central_loss_threshold_primary.tex", "tab_h1.tex", "tab_h1_paper.tex", "tab_h1_two_sided.tex",
+            "tab_h3.tex", "tab_update.tex", "tab_tofu.tex"} <= set(with_ga)
+    tofu = (tmp_path / "tab" / "tab_tofu.tex").read_text()
+    assert "Pythia-1B (LoRA) & central & GA$^{\\dagger}$" in tofu
+    assert analysis._collapse_note({("gpt2", "central", "gradient_ascent"): (5, 5),
+                                    ("gpt2", "iid_K3", "client_ga"): (3, 3)}) == (
+        "$^{\\dagger}$Model collapsed: model utility 0 in every seed (GPT-2, central, GA: 5/5; "
+        "GPT-2, iid\\_K3, Client GA, global: 3/3).")
 
 
 def test_end_to_end_on_a_smoke_campaign(tmp_path):

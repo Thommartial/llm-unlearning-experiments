@@ -1,0 +1,6 @@
+model,variant,method,zero,rows
+distilgpt2,central,gradient_ascent,5,5
+gpt2,central,gradient_ascent,5,5
+gpt2-medium,central,gradient_ascent,5,5
+distilgpt2,iid_K5,retrain,5,5
+EleutherAI/pythia-1b,lora,gradient_ascent,5,5

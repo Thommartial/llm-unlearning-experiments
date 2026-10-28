@@ -15,12 +15,12 @@ GPT-2 & central & Retrain & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
 GPT-2 & central & Retrain & method & $125.5$ & $118.8$ & $0.95$ & yes \\
 GPT-2 & central & Retrain & post\_eval & $123.6$ & $108.3$ & $0.88$ & yes \\
 GPT-2 & central & Retrain & alignment & $73.3$ & $72.5$ & $0.99$ & yes \\
-GPT-2 & central & GA & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
-GPT-2 & central & GA & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
-GPT-2 & central & GA & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
-GPT-2 & central & GA & method & $22.2$ & $21.7$ & $0.98$ & yes \\
-GPT-2 & central & GA & post\_eval & $144.0$ & $127.6$ & $0.89$ & yes \\
-GPT-2 & central & GA & alignment & $74.9$ & $71.0$ & $0.95$ & yes \\
+GPT-2 & central & GA$^{\dagger}$ & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
+GPT-2 & central & GA$^{\dagger}$ & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
+GPT-2 & central & GA$^{\dagger}$ & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
+GPT-2 & central & GA$^{\dagger}$ & method & $22.2$ & $21.7$ & $0.98$ & yes \\
+GPT-2 & central & GA$^{\dagger}$ & post\_eval & $144.0$ & $127.6$ & $0.89$ & yes \\
+GPT-2 & central & GA$^{\dagger}$ & alignment & $74.9$ & $71.0$ & $0.95$ & yes \\
 GPT-2 & central & GD & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
 GPT-2 & central & GD & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
 GPT-2 & central & GD & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
@@ -54,6 +54,33 @@ GPT-2 & iid\_K5 & Client GA, global & alignment & $74.5$ & $70.7$ & $0.95$ & yes
 GPT-2 & iid\_K5 & Client GA, global & fedavg & $376.4$ & $361.8$ & $0.96$ & yes \\
 GPT-2 & iid\_K5 & Client GA, global & client\_unlearn & $28.3$ & $27.7$ & $0.98$ & yes \\
 GPT-2 & iid\_K5 & Client GA, global & recovery & $82.3$ & $79.1$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & Retrain & base\_scoring & $15.4$ & $13.9$ & $0.90$ & yes \\
+Pythia-1B (LoRA) & central & Retrain & finetune & $339.3$ & $332.0$ & $0.98$ & yes \\
+Pythia-1B (LoRA) & central & Retrain & pre\_eval & $189.1$ & $180.9$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & Retrain & method & $295.5$ & $282.6$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & Retrain & post\_eval & $175.8$ & $167.8$ & $0.95$ & yes \\
+Pythia-1B (LoRA) & central & Retrain & alignment & $147.7$ & $140.1$ & $0.95$ & yes \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & base\_scoring & $15.4$ & $13.9$ & $0.90$ & yes \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & finetune & $339.3$ & $332.0$ & $0.98$ & yes \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & pre\_eval & $189.1$ & $180.9$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & method & $28.0$ & $27.3$ & $0.98$ & yes \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & post\_eval & $215.7$ & $206.7$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & alignment & $147.7$ & $140.5$ & $0.95$ & yes \\
+Pythia-1B (LoRA) & central & GD & base\_scoring & $15.4$ & $13.9$ & $0.90$ & yes \\
+Pythia-1B (LoRA) & central & GD & finetune & $339.3$ & $332.0$ & $0.98$ & yes \\
+Pythia-1B (LoRA) & central & GD & pre\_eval & $189.1$ & $180.9$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & GD & method & $53.9$ & $53.0$ & $0.98$ & yes \\
+Pythia-1B (LoRA) & central & GD & post\_eval & $217.0$ & $207.1$ & $0.95$ & yes \\
+Pythia-1B (LoRA) & central & GD & alignment & $147.9$ & $140.5$ & $0.95$ & yes \\
+Pythia-1B (LoRA) & central & NPO & base\_scoring & $15.4$ & $13.9$ & $0.90$ & yes \\
+Pythia-1B (LoRA) & central & NPO & finetune & $339.3$ & $332.0$ & $0.98$ & yes \\
+Pythia-1B (LoRA) & central & NPO & pre\_eval & $189.1$ & $180.9$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & NPO & method & $74.5$ & $73.5$ & $0.99$ & yes \\
+Pythia-1B (LoRA) & central & NPO & post\_eval & $216.2$ & $207.7$ & $0.96$ & yes \\
+Pythia-1B (LoRA) & central & NPO & alignment & $147.9$ & $140.3$ & $0.95$ & yes \\
 \bottomrule
 \end{tabular*}
+
+\smallskip
+{\footnotesize $^{\dagger}$Model collapsed: model utility 0 in 5/5 seeds (GPT-2, central, GA; Pythia-1B (LoRA), central, GA).\par}
 \end{table*}

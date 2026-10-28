@@ -10,15 +10,15 @@
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Forget quality} & \textbf{Model utility} & \textbf{MU excl. 0} \\
 \midrule
 DistilGPT-2 & central & Retrain & $1.000 \pm 0.000$ & $0.020 \pm 0.055$ & $0.099$ \\
-DistilGPT-2 & central & GA & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
+DistilGPT-2 & central & GA$^{\dagger}$ & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
 DistilGPT-2 & central & GD & $0.085 \pm 0.064$ & $0.023 \pm 0.030$ & $0.028 \pm 0.038$ \\
 DistilGPT-2 & central & NPO & $0.051 \pm 0.048$ & $0.039 \pm 0.038$ & $0.039 \pm 0.038$ \\
 GPT-2 & central & Retrain & $1.000 \pm 0.000$ & $0.082 \pm 0.052$ & $0.082 \pm 0.052$ \\
-GPT-2 & central & GA & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
+GPT-2 & central & GA$^{\dagger}$ & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
 GPT-2 & central & GD & $0.001 \pm 0.001$ & $0.108 \pm 0.034$ & $0.108 \pm 0.034$ \\
 GPT-2 & central & NPO & $0.004 \pm 0.007$ & $0.085 \pm 0.038$ & $0.085 \pm 0.038$ \\
 GPT-2-medium & central & Retrain & $1.000 \pm 0.000$ & $0.260 \pm 0.018$ & $0.260 \pm 0.018$ \\
-GPT-2-medium & central & GA & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
+GPT-2-medium & central & GA$^{\dagger}$ & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
 GPT-2-medium & central & GD & $0.000 \pm 0.000$ & $0.026 \pm 0.028$ & $0.026 \pm 0.028$ \\
 GPT-2-medium & central & NPO & $0.000 \pm 0.001$ & $0.193 \pm 0.069$ & $0.193 \pm 0.069$ \\
 GPT-2 & by\_author\_K5 & Retrain & $1.000 \pm 0.000$ & $0.108 \pm 0.054$ & $0.108 \pm 0.054$ \\
@@ -30,7 +30,7 @@ GPT-2 & iid\_K3 & Client GA, global & $0.954 \pm 0.196$ & $0.044 \pm 0.116$ & $0
 GPT-2 & iid\_K10 & Retrain & $1.000 \pm 0.000$ & $0.103 \pm 0.075$ & $0.103 \pm 0.075$ \\
 GPT-2 & iid\_K10 & Client GA, upload & -- & -- & -- \\
 GPT-2 & iid\_K10 & Client GA, global & $0.527 \pm 0.279$ & $0.122 \pm 0.035$ & $0.122 \pm 0.035$ \\
-DistilGPT-2 & iid\_K5 & Retrain & $1.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
+DistilGPT-2 & iid\_K5 & Retrain$^{\dagger}$ & $1.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
 DistilGPT-2 & iid\_K5 & Client GA, upload & -- & -- & -- \\
 DistilGPT-2 & iid\_K5 & Client GA, global & $0.780 \pm 0.381$ & $0.016 \pm 0.035$ & $0.041 \pm 0.306$ \\
 GPT-2 & iid\_K5 & Retrain & $1.000 \pm 0.000$ & $0.104 \pm 0.034$ & $0.104 \pm 0.034$ \\
@@ -39,9 +39,13 @@ GPT-2 & iid\_K5 & Client GA, global & $0.706 \pm 0.509$ & $0.087 \pm 0.029$ & $0
 GPT-2-medium & iid\_K5 & Retrain & $1.000 \pm 0.000$ & $0.267 \pm 0.020$ & $0.267 \pm 0.020$ \\
 GPT-2-medium & iid\_K5 & Client GA, upload & -- & -- & -- \\
 GPT-2-medium & iid\_K5 & Client GA, global & $0.745 \pm 0.236$ & $0.257 \pm 0.028$ & $0.257 \pm 0.028$ \\
+Pythia-1B (LoRA) & central & Retrain & $1.000 \pm 0.000$ & $0.332 \pm 0.005$ & $0.332 \pm 0.005$ \\
+Pythia-1B (LoRA) & central & GA$^{\dagger}$ & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
+Pythia-1B (LoRA) & central & GD & $0.001 \pm 0.002$ & $0.006 \pm 0.015$ & $0.015 \pm 0.162$ \\
+Pythia-1B (LoRA) & central & NPO & $0.000 \pm 0.001$ & $0.106 \pm 0.069$ & $0.106 \pm 0.069$ \\
 \bottomrule
 \end{tabular*}
 
 \smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Rows with model utility 0: 29 of 108. MU excl.\ 0: model utility without those rows (sensitivity check).\par}
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Rows with model utility 0: 37 of 128. MU excl.\ 0: model utility without those rows (sensitivity check). $^{\dagger}$Model collapsed: model utility 0 in 5/5 seeds (DistilGPT-2, central, GA; GPT-2, central, GA; GPT-2-medium, central, GA; DistilGPT-2, iid\_K5, Retrain; Pythia-1B (LoRA), central, GA).\par}
 \end{table*}

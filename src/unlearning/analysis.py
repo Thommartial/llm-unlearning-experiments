@@ -38,6 +38,8 @@ VIEW_NAMES = {"central": "release", "any_client": "any client",
               "server, and all clients at the first recovery broadcast": "server$^{*}$"}
 DEFINITIONS = {"basediff": "primary", "rarity": "secondary", "legacy": "ablation", "legacy_pooled": "ablation"}
 KEY = ["campaign", "kind", "model", "variant"]
+RUN_NAMES = {"lora": "central"}  # the LoRA campaign is centralized; the model name says LoRA
+COLLAPSED_MARK = "$^{\\dagger}$"
 PAPER_SCOPE = ("loss_threshold", "primary")  # attack and non-member set of the paper's H1 tables
 PILOT_CSVS = ("pilot.csv", "pilot_lora.csv")  # timing rows of the pilot and the LoRA pilot, not campaigns
 
@@ -143,8 +145,9 @@ def h1_two_sided(df: pd.DataFrame) -> pd.DataFrame:
     """Exploratory, post hoc (ANALYSIS_PLAN §10): the two-sided distance
     |AUC - AUC_retrain| per seed (|gap_post|; federated rows against the
     federated retrain), overall and per stratum, with mean and CI over seeds.
-    Also the signed mean gap, the number of seeds below retrain and the TOFU
-    forget quality. H1 itself is unchanged."""
+    Also the signed mean gap, the number of seeds below retrain, MUSE's
+    PrivLeak (AUC_post - AUC_retrain) / AUC_retrain per seed (Shi et al., ICLR
+    2025; mean and CI) and the TOFU forget quality. H1 itself is unchanged."""
     out = []
     d = df[df["method"] != "retrain"]
     strata = [("all", "", None)] + [(f"{part}_{defn}", f"_{part}_{defn}", defn)
@@ -156,9 +159,12 @@ def h1_two_sided(df: pd.DataFrame) -> pd.DataFrame:
             if col not in g or g[col].isna().all():
                 continue
             s = t_ci(g[col].abs())
+            auc = f"auc_post{suffix}"
+            leak = t_ci(g[col] / (g[auc] - g[col]) if auc in g else [])  # AUC_retrain = AUC_post - gap
             out.append({**dict(zip(KEY + ["method", "attack", "nonmember"], keys, strict=True)), "stratum": stratum,
                         "definition": defn, "role": DEFINITIONS.get(defn, "overall"), **s,
                         "gap_mean": t_ci(g[col])["mean"], "n_below_retrain": int((g[col] < 0).sum()),
+                        **{f"privleak_{k}": leak[k] for k in ("mean", "half", "lo", "hi")},
                         "forget_quality_mean": fq["mean"], "forget_quality_half": fq["half"]})
     return pd.DataFrame(out)
 
@@ -284,7 +290,8 @@ def update_attacks(df: pd.DataFrame) -> pd.DataFrame:
     out = []
     for keys, g in d.groupby(KEY + ["method", "attack", "nonmember"], sort=False):
         row = dict(zip(KEY + ["method", "attack", "nonmember"], keys, strict=True))
-        row["view"] = g["view"].iloc[0] if "view" in g else "central"
+        # central CSVs have no view column: NaN once concatenated with federated rows
+        row["view"] = g["view"].iloc[0] if "view" in g and pd.notna(g["view"].iloc[0]) else "central"
         for col in ("auc_score_change", "gap_auc_score_change", "auc_grad_align", "gap_auc_grad_align",
                     "auc_grad_align_random"):
             s = t_ci(g[col])
@@ -402,6 +409,18 @@ def tofu(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return summary, pd.DataFrame(zeros)
 
 
+def collapsed(df: pd.DataFrame) -> pd.DataFrame:
+    """(model, variant, method) whose model utility is 0 in every seed with a
+    value: marked as a collapsed model in the tables."""
+    out = []
+    for keys, g in per_unit(df).groupby(["model", "variant", "method"], sort=False):
+        v = g["model_utility_post"].dropna() if "model_utility_post" in g else pd.Series(dtype=float)
+        if len(v) and (v == 0).all():
+            out.append({**dict(zip(["model", "variant", "method"], keys, strict=True)), "zero": int(len(v)),
+                        "rows": int(len(v))})
+    return pd.DataFrame(out, columns=["model", "variant", "method", "zero", "rows"])
+
+
 def hyperparameters(configs: list[tuple[str, str, dict]], kinds: dict) -> pd.DataFrame:
     """Settings of each campaign from the resolved configs; a setting that
     differs between the units of a campaign lists its values."""
@@ -477,9 +496,13 @@ def _model(m: str) -> str:
     return _tex(MODEL_NAMES.get(m, m))
 
 
+def _run(variant: str) -> str:
+    return _tex(RUN_NAMES.get(variant, variant))
+
+
 def _setting(r) -> str:
     return f"{_tex(r['sharding'])}, $K={int(r['num_clients'])}$" if "num_clients" in r and pd.notna(r["num_clients"]) \
-        else _tex(r["variant"])
+        else _run(r["variant"])
 
 
 def _ci_cell(s: pd.DataFrame, col: str, digits: int = 2) -> str:
@@ -487,13 +510,38 @@ def _ci_cell(s: pd.DataFrame, col: str, digits: int = 2) -> str:
     return _fmt(g["mean"].iloc[0], g["half"].iloc[0], digits) if len(g) else "--"
 
 
+def _collapse_note(marked: dict) -> str:
+    """The note for the marked rows: model utility 0 in k/n seeds, and which rows."""
+    same = len(set(marked.values())) == 1
+    which = "; ".join(f"{_model(m)}, {_run(v)}, {METHOD_NAMES.get(x, _tex(x))}" + ("" if same else f": {k}/{n}")
+                      for (m, v, x), (k, n) in marked.items())
+    k, n = next(iter(marked.values()))
+    return f"{COLLAPSED_MARK}Model collapsed: model utility 0 in {f'{k}/{n} seeds' if same else 'every seed'} ({which})."
+
+
 def write_tables(a: dict, out) -> list[Path]:
     """Every LaTeX table; returns the paths written."""
     out = Path(out)
     df = a["rows"]
     written = []
+    flags = {(r["model"], r["variant"], r["method"]): (r["zero"], r["rows"])
+             for r in a.get("collapsed", pd.DataFrame()).to_dict("records")}
+    marked = {}  # collapsed rows shown in the table being built
+
+    def meth(method, *runs):
+        """Method name, marked when its model collapsed in any of the (model, variant) runs."""
+        hit = [(m, v, method) for m, v in runs if (m, v, method) in flags]
+        marked.update({k: flags[k] for k in hit})
+        return METHOD_NAMES.get(method, _tex(method)) + (COLLAPSED_MARK if hit else "")
 
     def save(name, *args, **kw):
+        if marked:
+            extra = _collapse_note(marked)
+            if len(args) > 4:
+                args = (*args[:4], f"{args[4]} {extra}".strip(), *args[5:])
+            else:
+                kw["note"] = f"{kw.get('note', '')} {extra}".strip()
+            marked.clear()
         latex_table(out / name, *args, **kw)
         written.append(out / name)
 
@@ -517,7 +565,7 @@ def write_tables(a: dict, out) -> list[Path]:
                                & (s["method"] == m)]
                         first = u[u["method"] == m].iloc[0]
                         cells = [_model(model)] + ([_setting(first)] if kind == "federated" else []) + [
-                            METHOD_NAMES.get(m, _tex(m)),
+                            meth(m, (model, variant)),
                             *[_ci_cell(sm, c) for c in ("auc_pre", "auc_post", "gap_post", "tpr1_post", "adv_post",
                                                          "adv_post_typical_basediff", "adv_post_outlier_basediff")]]
                         if kind == "federated":
@@ -552,7 +600,7 @@ def write_tables(a: dict, out) -> list[Path]:
         lead = ("Model", "Run", "Method") + (() if paper else ("Attack", "Non-members"))
 
         def head(r, paper=paper):
-            cells = [_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["method"], r["method"])]
+            cells = [_model(r["model"]), _run(r["variant"]), meth(r["method"], (r["model"], r["variant"]))]
             return cells if paper else cells + [ATTACK_NAMES[r["attack"]], _tex(r["nonmember"])]
         h = _scoped(a["h1"], scope)
         if not h.empty:
@@ -571,21 +619,27 @@ def write_tables(a: dict, out) -> list[Path]:
                         for s in ("all", "typical_basediff", "outlier_basediff")]
                 r = cell["all"]
                 rows.append(head(r) + [*dist, f"{r['n_below_retrain']}/{r['n']}",
+                                       _fmt(100 * r["privleak_mean"], 100 * r["privleak_half"], 1),
                                        _fmt(r["forget_quality_mean"], r["forget_quality_half"], 3)])
             save(f"tab_h1_two_sided{sfx}.tex", "Exploratory (post hoc): two-sided distance $|\\mathrm{AUC}-"
                  "\\mathrm{AUC}_{\\mathrm{retrain}}|$ to the retrained model of the same seed (federated: the "
-                 "federated retrain), overall and per stratum, next to TOFU forget quality. Added after seeing "
-                 f"the GPT-2 results; H1 (Table~\\ref{{tab:h1{sfx.replace('_', '-')}}}) is the pre-registered "
-                 "one-sided test." + where("tab:h1-two-sided"), f"tab:h1-two-sided{sfx.replace('_', '-')}",
-                 [" & ".join(_b(x) for x in lead + ("All", "Typical", "Outlier", "Below", "Forget quality"))],
+                 "federated retrain), overall and per stratum, added after seeing the GPT-2 results; next to "
+                 "MUSE's PrivLeak~\\cite{shi2024muse}, $(\\mathrm{AUC}-\\mathrm{AUC}_{\\mathrm{retrain}})/"
+                 "\\mathrm{AUC}_{\\mathrm{retrain}}$, and TOFU forget quality. H1 "
+                 f"(Table~\\ref{{tab:h1{sfx.replace('_', '-')}}}) is the pre-registered one-sided test."
+                 + where("tab:h1-two-sided"), f"tab:h1-two-sided{sfx.replace('_', '-')}",
+                 [" & ".join(_b(x) for x in lead + ("All", "Typical", "Outlier", "Below", "PrivLeak (\\%)",
+                                                    "Forget quality"))],
                  rows, ci_note + " Strata by base-model difficulty, stratum-matched. Below: seeds whose AUC is "
-                 "under the retrained model's.", align="l" * len(lead) + "c" * 5)
+                 "under the retrained model's. PrivLeak: per seed, over all records, in percent (MUSE's "
+                 "convention; near 0 for good unlearning).", align="l" * len(lead) + "c" * 6)
     if not a["h2"].empty:
         models = [m for m in GPT2_PARAMS if f"{m}__gap_post" in a["h2"]]
         rows = []
         for r in a["h2"].to_dict("records"):
             slope = _fmt(r["slope"], r["slope_half"], 3) if pd.notna(r.get("slope")) else "--"
-            rows.append([METHOD_NAMES.get(r["method"], r["method"]), ATTACK_NAMES[r["attack"]], _tex(r["nonmember"]),
+            rows.append([meth(r["method"], *[(m, "central") for m in models]), ATTACK_NAMES[r["attack"]],
+                         _tex(r["nonmember"]),
                          *[_fmt(r[f"{m}__gap_post"], r[f"{m}__gap_post_half"]) for m in models],
                          *[_fmt(r[f"{m}__rel_drop"], r[f"{m}__rel_drop_half"]) for m in models], slope])
         save("tab_h2.tex", "H2: retrain-relative gap and relative advantage drop "
@@ -600,7 +654,7 @@ def write_tables(a: dict, out) -> list[Path]:
         h = a["h3"][a["h3"]["role"].isin(roles)] if not a["h3"].empty else a["h3"]
         if h.empty:
             continue
-        rows = [[_model(r.model), METHOD_NAMES.get(r.method, r.method), ATTACK_NAMES[r.attack], _tex(r.nonmember),
+        rows = [[_model(r.model), meth(r.method, (r.model, r.variant)), ATTACK_NAMES[r.attack], _tex(r.nonmember),
                  _tex(r.definition), _fmt(r.gap_outlier), _fmt(r.gap_typical), _fmt(r.mean, r.half, 3),
                  r.verdict if isinstance(r.verdict, str) else "--", _fmt(r.adv_outlier), _fmt(r.adv_typical)]
                 for r in h.itertuples()]
@@ -613,7 +667,7 @@ def write_tables(a: dict, out) -> list[Path]:
     lf = a["low_fpr"]
     if not lf.empty:
         lf = lf[lf["stage"].str.startswith("post_") & (lf["attack"] != "ref_calibrated")]
-        rows = [[_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["stage"][5:], r["stage"]),
+        rows = [[_model(r["model"]), _run(r["variant"]), meth(r["stage"][5:], (r["model"], r["variant"])),
                  ATTACK_NAMES[r["attack"]], _tex(r["nonmember"]), str(r["n_seeds"]), str(r["n_nonmember"]),
                  _fmt(r["tpr_at_0.1"], digits=3), _fmt(r["tpr_at_0.1_seed_mean"], r["tpr_at_0.1_seed_half"], 3),
                  _fmt(r.get("tpr_at_1_outlier_basediff"), digits=3),
@@ -639,7 +693,7 @@ def write_tables(a: dict, out) -> list[Path]:
              + " as mean and t-interval over seeds (no pooling).", align="lllll" + "c" * 6)
     if not a["update"].empty:
         u = a["update"]
-        rows = [[_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["method"], r["method"]),
+        rows = [[_model(r["model"]), _run(r["variant"]), meth(r["method"], (r["model"], r["variant"])),
                  VIEW_NAMES.get(r["view"], _tex(r["view"])),
                  ATTACK_NAMES[r["attack"]], _tex(r["nonmember"]),
                  _fmt(r["auc_score_change"], r["auc_score_change_half"]),
@@ -692,7 +746,7 @@ def write_tables(a: dict, out) -> list[Path]:
         s = a["tofu"]
         rows = []
         for keys, g in s.groupby(KEY + ["method"], sort=False):
-            rows.append([_model(keys[2]), _tex(keys[3]), METHOD_NAMES.get(keys[4], keys[4]),
+            rows.append([_model(keys[2]), _run(keys[3]), meth(keys[4], (keys[2], keys[3])),
                          _ci_cell(g, "forget_quality_post", 3), _ci_cell(g, "model_utility_post", 3),
                          _ci_cell(g, "model_utility_post_nonzero", 3)])
         zero = a["mu_zero"]
@@ -710,7 +764,8 @@ def write_tables(a: dict, out) -> list[Path]:
              "tab:hyperparameters", [" & ".join([_b("Setting")] + [_b(_tex(c)) for c in h.columns])], rows,
              align="l" + "l" * len(h.columns))
     if not a["slowdown"].empty:
-        rows = [[_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["method"], r["method"]), _tex(r["phase"]),
+        rows = [[_model(r["model"]), _run(r["variant"]), meth(r["method"], (r["model"], r["variant"])),
+                 _tex(r["phase"]),
                  f"${r['alone_s']:.1f}$", f"${r['campaign_s']:.1f}$", _fmt(r["slowdown"]),
                  "yes" if r["same_gpu"] else "no"] for r in a["slowdown"].to_dict("records")]
         save("tab_pilot_slowdown.tex", "Phase times of seed 0 run alone (pilot, LoRA pilot) and with a second "
@@ -873,6 +928,7 @@ def analyse(results, figures_dir, tables_dir) -> dict:
              central_costs=central_costs(df), slowdown=pilot_slowdown(df, a["pilot"]),
              hyper=hyperparameters(a["configs"], kinds))
     a["tofu"], a["mu_zero"] = tofu(df)
+    a["collapsed"] = collapsed(df)
     a["summary"] = summarise(df, KEY + ["method", "attack", "nonmember"],
                              ["auc_base", "adv_base", "auc_pre", "auc_post", "adv_pre", "adv_post", "gap_pre",
                               "gap_post", "tpr1_base", "tpr1_pre", "tpr1_post", "auc_score_change", "auc_grad_align",
@@ -880,7 +936,7 @@ def analyse(results, figures_dir, tables_dir) -> dict:
     tables_dir = Path(tables_dir)
     tables_dir.mkdir(parents=True, exist_ok=True)
     for name in ("summary", "h1", "h1_two_sided", "h2", "h3", "low_fpr", "update", "control", "costs",
-                 "central_costs", "slowdown", "tofu", "mu_zero"):
+                 "central_costs", "slowdown", "tofu", "mu_zero", "collapsed"):
         a[name].to_csv(tables_dir / f"{name}.csv", index=False)
     a["hyper"].to_csv(tables_dir / "hyperparameters.csv")
     a["tables"] = write_tables(a, tables_dir)
