@@ -34,25 +34,20 @@ def _script():
     return mod
 
 
-@pytest.mark.parametrize("name, n_units, models, requires, calibrated", [
-    ("central", 15, {"distilgpt2", "gpt2", "gpt2-medium"}, {"unlearn.finetune_lr"}, True),
+@pytest.mark.parametrize("name, n_units, models, requires", [
+    ("central", 15, {"distilgpt2", "gpt2", "gpt2-medium"}, {"unlearn.finetune_lr"}),
     ("fed_iid", 15, {"distilgpt2", "gpt2", "gpt2-medium"},
-     {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}, True),
-    ("fed_ext", 9, {"gpt2"}, {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}, True),
-    # Pythia-1B: waits for the LoRA pilot (07_pilot_lora)
-    ("lora", 5, {"EleutherAI/pythia-1b"}, {"unlearn.finetune_lr", "unlearn.learning_rate"}, False),
+     {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}),
+    ("fed_ext", 9, {"gpt2"}, {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}),
+    ("lora", 5, {"EleutherAI/pythia-1b"}, {"unlearn.finetune_lr", "unlearn.learning_rate"}),
 ])
-def test_campaign_configs(name, n_units, models, requires, calibrated, tmp_path):
+def test_campaign_configs(name, n_units, models, requires, tmp_path):
     path = REVISION / f"{name}.yaml"
     raw = campaign.read_campaign(path)
     us = campaign.units(raw)
     assert len(us) == n_units and {u.model for u in us} == models
     assert set(raw["campaign"]["requires"]) == requires
-    if calibrated:
-        campaign.check_calibrated(raw)  # the pilot's values are set
-    else:
-        with pytest.raises(SystemExit, match="set from pilot"):
-            campaign.check_calibrated(raw)
+    campaign.check_calibrated(raw)  # the pilot's values are set (lora.yaml: the LoRA pilot)
     blank = _uncalibrated(tmp_path) / f"{name}.yaml"
     with pytest.raises(SystemExit, match="set from pilot"):  # every required value is marked
         campaign.check_calibrated(campaign.read_campaign(blank))
