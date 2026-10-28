@@ -280,17 +280,21 @@ def client_gradient_ascent(model, dataset, cfg: ExperimentConfig, device: str, c
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.unlearn.learning_rate)
     scaler = torch.amp.GradScaler("cuda", enabled=unlearn._use_amp(cfg, device))
     center = {n: center[n].to(device, torch.float32) for n, _ in model.named_parameters()}
+    stats = unlearn.StepStats()
     for _ in range(cfg.federated.client_unlearn_epochs):
         for batch in unlearn._loader(dataset, cfg):
             opt.zero_grad()
+            stats.batches += 1
             with unlearn._autocast(cfg, device):
                 loss = -model(input_ids=batch["input_ids"].to(device),
                               attention_mask=batch["attention_mask"].to(device),
                               labels=batch["labels"].to(device)).loss
             if not torch.isfinite(loss):
+                stats.skipped_loss += 1
                 continue
-            unlearn._step(loss, model, opt, scaler)
+            unlearn._step(loss, model, opt, scaler, stats)
             project_to_ball(model, center, rho)
+    stats.log("client_gradient_ascent")
 
 
 def run_fed(cfg: ExperimentConfig, device: str, methods=FED_METHODS) -> dict:

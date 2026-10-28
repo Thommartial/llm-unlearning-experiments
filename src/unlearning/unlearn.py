@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import math
+from dataclasses import dataclass
 
 import torch
 from torch.utils.data import ConcatDataset, DataLoader
@@ -114,40 +116,165 @@ def _autocast(cfg: ExperimentConfig, device: str):
     return contextlib.nullcontext()
 
 
-def _step(loss, model, opt, scaler) -> None:
-    """Backward, clip at 1.0 and step; the scaler is a pass-through when disabled."""
+@dataclass
+class StepStats:
+    """Optimizer-step counters of one training loop (`train_lm`,
+    `apply_unlearning`, client GA), printed at its end by `log`.
+
+    `batches`: batches seen; `skipped_loss`: non-finite loss, no step;
+    `skipped_scaler`: the GradScaler skipped the step (inf/NaN gradients
+    under fp16 AMP; its scale was lowered); `nonfinite_grad`: gradient norm
+    not finite (under AMP the same steps; without AMP they are applied);
+    `zero_grad`: gradient norm exactly 0 (the step only applies weight
+    decay); the scaler's scale (1.0 without AMP) and the mean finite
+    gradient norm before clipping.
+    """
+    batches: int = 0
+    skipped_loss: int = 0
+    skipped_scaler: int = 0
+    nonfinite_grad: int = 0
+    zero_grad: int = 0
+    scale_first: float | None = None
+    scale_min: float | None = None
+    scale_last: float | None = None
+    grad_norm_sum: float = 0.0
+    grad_norm_n: int = 0
+    grad_norm_last: float | None = None
+
+    @property
+    def applied(self) -> int:
+        return self.batches - self.skipped_loss - self.skipped_scaler
+
+    @property
+    def grad_norm_mean(self) -> float | None:
+        return self.grad_norm_sum / self.grad_norm_n if self.grad_norm_n else None
+
+    def record(self, grad_norm: float, scale_before: float, scale_after: float) -> None:
+        self.grad_norm_last = grad_norm
+        if not math.isfinite(grad_norm):
+            self.nonfinite_grad += 1
+        else:
+            self.zero_grad += int(grad_norm == 0)
+            self.grad_norm_sum += grad_norm
+            self.grad_norm_n += 1
+        self.skipped_scaler += int(scale_after < scale_before)
+        self.scale_first = scale_before if self.scale_first is None else self.scale_first
+        self.scale_min = min(scale_after, self.scale_min if self.scale_min is not None else scale_after)
+        self.scale_last = scale_after
+
+    def summary(self) -> dict:
+        return {"batches": self.batches, "applied": self.applied, "skipped_loss": self.skipped_loss,
+                "skipped_scaler": self.skipped_scaler, "nonfinite_grad": self.nonfinite_grad,
+                "zero_grad": self.zero_grad, "scale_first": self.scale_first, "scale_min": self.scale_min,
+                "scale_last": self.scale_last, "grad_norm_mean": self.grad_norm_mean}
+
+    def log(self, where: str) -> None:
+        def fmt(v):
+            return "-" if v is None else f"{v:.4g}"
+        print(f"[steps] {where}: {self.batches} batches, {self.applied} applied, {self.skipped_loss} non-finite "
+              f"loss, {self.skipped_scaler} scaler skips, {self.nonfinite_grad} non-finite / {self.zero_grad} zero "
+              f"grad norms, scale {fmt(self.scale_first)} -> {fmt(self.scale_last)} (min {fmt(self.scale_min)}), "
+              f"mean grad norm {fmt(self.grad_norm_mean)}", flush=True)
+
+
+def _step(loss, model, opt, scaler, stats: StepStats | None = None) -> None:
+    """Backward, then `_update`."""
     scaler.scale(loss).backward()
+    _update(model, opt, scaler, stats)
+
+
+def _update(model, opt, scaler, stats: StepStats | None = None) -> None:
+    """Clip at 1.0 and step; the scaler is a pass-through when disabled. A
+    step the scaler skips (inf/NaN gradients) lowers its scale."""
     scaler.unscale_(opt)
-    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    scale = scaler.get_scale()
     scaler.step(opt)
     scaler.update()
+    if stats is not None:
+        stats.record(float(norm), scale, scaler.get_scale())
 
 
-def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr: float) -> None:
-    """Standard causal-LM fine-tuning loop (batch size `train_batch_size`)."""
+def _scored(labels) -> int:
+    """Tokens the causal-LM loss averages over (shifted labels that are not -100)."""
+    return int((labels[:, 1:] != -100).sum())
+
+
+def _micro_batches(batch: dict, n: int) -> list[dict]:
+    """Split a right-padded batch into `n` micro-batches, each cut to its longest record."""
+    out = []
+    for idx in torch.arange(len(batch["input_ids"])).chunk(n):
+        width = max(1, int(batch["attention_mask"][idx].sum(1).max()))
+        out.append({k: batch[k][idx, :width] for k in ("input_ids", "attention_mask", "labels")})
+    return out
+
+
+def _accumulate(model, batch: dict, n: int, cfg: ExperimentConfig, device: str, scaler) -> bool:
+    """Backward over `n` micro-batches of `batch`, each loss weighted by its share
+    of the batch's scored tokens, so the summed gradient is the whole batch's.
+    Stops and returns False on a non-finite loss."""
+    total = max(1, _scored(batch["labels"]))
+    for micro in _micro_batches(batch, n):
+        share = _scored(micro["labels"]) / total
+        if share == 0:
+            continue
+        with _autocast(cfg, device):
+            loss = model(input_ids=micro["input_ids"].to(device),
+                         attention_mask=micro["attention_mask"].to(device),
+                         labels=micro["labels"].to(device)).loss
+        if not torch.isfinite(loss):
+            return False
+        scaler.scale(loss * share).backward()
+    return True
+
+
+def train_lm(model, dataset, cfg: ExperimentConfig, device: str, epochs: int, lr: float,
+             stats: StepStats | None = None) -> StepStats:
+    """Standard causal-LM fine-tuning loop (batch size `train_batch_size`).
+
+    With `grad_accum_steps` n > 1 each batch runs as n micro-batches
+    (`_accumulate`): the same gradient, effective batch and learning rate,
+    with about 1/n of the activation memory. Returns the step counters
+    (added to `stats` if given), also printed.
+    """
     model.to(device).train()
     opt = torch.optim.AdamW(model.parameters(), lr=lr)
     scaler = torch.amp.GradScaler("cuda", enabled=_use_amp(cfg, device))
     batch_size = cfg.unlearn.train_batch_size or cfg.unlearn.batch_size
+    accum = cfg.unlearn.grad_accum_steps
+    if accum < 1:
+        raise ValueError(f"unlearn.grad_accum_steps must be at least 1, got {accum}.")
+    stats = StepStats() if stats is None else stats
     for _ in range(epochs):
         for batch in _loader(dataset, cfg, batch_size=batch_size):
             opt.zero_grad()
+            stats.batches += 1
+            if accum > 1:
+                if not _accumulate(model, batch, accum, cfg, device, scaler):
+                    stats.skipped_loss += 1
+                    continue
+                _update(model, opt, scaler, stats)
+                continue
             with _autocast(cfg, device):
                 out = model(input_ids=batch["input_ids"].to(device),
                             attention_mask=batch["attention_mask"].to(device),
                             labels=batch["labels"].to(device))
             if not torch.isfinite(out.loss):
+                stats.skipped_loss += 1
                 continue
-            _step(out.loss, model, opt, scaler)
+            _step(out.loss, model, opt, scaler, stats)
+    stats.log("train_lm")
+    return stats
 
 
-def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str, model=None):
+def finetune_base(cfg: ExperimentConfig, splits: Splits, device: str, model=None,
+                  stats: StepStats | None = None):
     """Fine-tune the base model (built fresh unless given) on all members (forget + retain)."""
     if model is None:
         model, _ = build_model_and_tokenizer(cfg)
     members = ConcatDataset([splits.forget, splits.retain])
     lr = cfg.unlearn.finetune_lr or cfg.unlearn.learning_rate
-    train_lm(model, members, cfg, device, cfg.unlearn.finetune_epochs, lr)
+    train_lm(model, members, cfg, device, cfg.unlearn.finetune_epochs, lr, stats)
     return model
 
 
@@ -160,9 +287,12 @@ def retrain_base(cfg: ExperimentConfig, splits: Splits, device: str, model=None)
     return model
 
 
-def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
-    """Dispatch to the configured unlearning method (utility-anchored)."""
+def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str,
+                     stats: StepStats | None = None):
+    """Dispatch to the configured unlearning method (utility-anchored).
+    The step counters go to `stats` if given and are printed."""
     method = cfg.unlearn.method
+    stats = StepStats() if stats is None else stats
     model.to(device).train()
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.unlearn.learning_rate)
     scaler = torch.amp.GradScaler("cuda", enabled=_use_amp(cfg, device))
@@ -187,6 +317,7 @@ def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
     for _ in range(cfg.unlearn.epochs):
         for batch in _loader(splits.forget, cfg):
             opt.zero_grad()
+            stats.batches += 1
             with _autocast(cfg, device):
                 forget_loss = lm_loss(batch)
 
@@ -207,8 +338,10 @@ def apply_unlearning(model, splits: Splits, cfg: ExperimentConfig, device: str):
                     raise ValueError(f"Unknown unlearning method '{method}'.")
 
             if not torch.isfinite(loss):
+                stats.skipped_loss += 1
                 continue  # skip pathological steps instead of corrupting the model
-            _step(loss, model, opt, scaler)
+            _step(loss, model, opt, scaler, stats)
+    stats.log(f"apply_unlearning {method}")
     if release is not None:
         release()
     return model

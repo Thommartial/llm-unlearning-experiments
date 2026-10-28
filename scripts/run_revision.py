@@ -5,6 +5,7 @@
     python scripts/run_revision.py --merge results/revision/central_gpu*.csv --out results/revision/central.csv
     python scripts/run_revision.py --campaign pilot
     python scripts/run_revision.py --apply-calibration results/revision/pilot_calibration.json
+    python scripts/run_revision.py --campaign central --memory-probe gpt2-medium
 
 Campaigns: pilot, central, fed_iid, fed_ext, lora (Kaggle) and smoke, micro
 (CPU). The config defaults to configs/revision/<campaign>.yaml
@@ -14,6 +15,9 @@ result files: it exits 1 and lists the missing units if any unit of the
 selected models and seeds lacks rows. --apply-calibration fills the values
 marked `# set from pilot` in configs/revision/*.yaml from the pilot's report
 and prints the diff and the pilot's flags (review both, then commit).
+--memory-probe runs one step of each training phase of one model of the
+campaign (`memprobe`) and exits 1 if the reserved GPU memory peak exceeds
+--max-reserved-gib.
 """
 
 from __future__ import annotations
@@ -44,6 +48,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--list", action="store_true", help="list the units and exit")
     ap.add_argument("--apply-calibration", metavar="JSON", help="fill the '# set from pilot' config values")
     ap.add_argument("--configs-dir", default="configs/revision", help="configs for --apply-calibration")
+    ap.add_argument("--memory-probe", metavar="MODEL", help="one step of each training phase of MODEL, then exit")
+    ap.add_argument("--max-reserved-gib", type=float, default=14.0, help="memory probe limit (GiB reserved)")
     args = ap.parse_args(argv)
 
     if args.apply_calibration:
@@ -65,6 +71,15 @@ def main(argv: list[str] | None = None) -> int:
     config = args.config or f"configs/revision/{CONFIGS.get(args.campaign, args.campaign + '.yaml')}"
     out = args.out or f"{args.out_dir}/{args.campaign}.csv"
 
+    if args.memory_probe:
+        from unlearning.memprobe import run_probe
+
+        try:
+            run_probe(config, args.memory_probe, args.device, args.max_reserved_gib)
+        except SystemExit as e:
+            print(e)
+            return 1
+        return 0
     if args.campaign == "pilot":
         from unlearning.pilot import run_pilot
 

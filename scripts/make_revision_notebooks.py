@@ -6,6 +6,8 @@ One folder per notebook under notebooks/revision/<nn>_<name>/ with the
 .ipynb and kernel-metadata.json (T4 x2, internet on, private). The kernel
 id is "${KAGGLE_USERNAME}/<slug>": scripts/kaggle_run.sh fills in the user
 name and the REPO_COMMIT cell at push time, so neither is stored here.
+The campaign notebooks are in NOTEBOOKS; DIAGNOSTICS holds short one-GPU
+runs of a diagnostic script (no tests or smoke run).
 """
 
 from __future__ import annotations
@@ -27,15 +29,22 @@ NOTEBOOKS = {
                  "what": "the calibration of ANALYSIS_PLAN §7 on GPT-2 seed 0 (fine-tuning rate, FedAvg rounds, "
                          "unlearning radius), the TinyLlama LoRA rate and its first weight load, the LoRA GA "
                          "sanity check, and one central and one federated GPT-2 run timed alone"},
-    "01_central": {"campaign": "central", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]},
+    "01_central": {"campaign": "central", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]}, "memory_probe": "gpt2-medium",
                    "what": "the central campaign: DistilGPT-2, GPT-2, GPT-2-medium x seeds 0-4"},
-    "02_fed_iid": {"campaign": "fed_iid", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]},
+    "02_fed_iid": {"campaign": "fed_iid", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]}, "memory_probe": "gpt2-medium",
                    "what": "the federated campaign: DistilGPT-2, GPT-2, GPT-2-medium x seeds 0-4, K = 5, iid"},
     "03_fed_ext": {"campaign": "fed_ext", "gpu_seeds": {0: [0, 2], 1: [1]},
                    "what": "the federated extensions: GPT-2 x seeds 0-2; by author K = 5, iid K = 3 and K = 10"},
     "04_1b_lora": {"campaign": "lora", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]},
                    "what": "the LoRA campaign: TinyLlama v1.1 x seeds 0-4, central path"},
 }
+# diagnostics: one process on GPU 0, no tests or smoke run, results zipped like the campaigns
+DIAGNOSTICS = {
+    "05_lora_diag": {"script": "scripts/lora_diag.py", "args": ["--steps", "200"], "out": "results/revision/lora_diag",
+                     "what": "the LoRA training diagnostic (`scripts/lora_diag.py`): TinyLlama, 200 steps per arm, "
+                             "fp16 AMP against fp32 adapters and three one-change variants, every step logged"},
+}
+MEMORY_LIMIT_GIB = 14
 
 
 def _code(text: str) -> dict:
@@ -54,25 +63,13 @@ def _with_ids(cells: list[dict]) -> list[dict]:
     return [{"id": f"cell-{i}", **c} for i, c in enumerate(cells)]
 
 
-def notebook(name: str, spec: dict) -> dict:
-    camp = spec["campaign"]
-    pilot = camp == "pilot"
-    cells = [
-        _md(f"""# Revision campaign: {name}
-
-Runs {spec['what']}.
-
-Launched with `scripts/kaggle_run.sh {name} <commit>`, which sets `REPO_COMMIT` below. Cells: clone the
-repository at that commit, install, check the GPUs, run the tests (a skipped CUDA test fails the notebook),
-run the smoke config on the GPU, then {"run the pilot in one process on GPU 0" if pilot else
-"run the campaign in two processes, one per T4, split by seed"}. Success is judged by the result files.
-Everything under `results/revision/` is zipped into `/kaggle/working/`; logs are in `/kaggle/working/logs/`."""),
-        _code(f"""REPO_COMMIT = "SET_BY_KAGGLE_RUN"  # written by scripts/kaggle_run.sh
-REPO_URL = "{REPO_URL}"
-CAMPAIGN = "{camp}"
-GPU_SEEDS = {spec['gpu_seeds']!r}  # GPU -> seeds (None: the pilot's own)"""),
+def _setup_cells() -> list[dict]:
+    """Clone at REPO_COMMIT, install, list the GPUs."""
+    return [
         _code("""import os, subprocess, sys
 assert REPO_COMMIT != "SET_BY_KAGGLE_RUN", "launch with scripts/kaggle_run.sh, which sets REPO_COMMIT"
+# fewer fragmented reserves; set before torch starts CUDA here or in any subprocess
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 REPO = "/tmp/repo"  # outside /kaggle/working: only results and logs are kept as output
 subprocess.run(["git", "clone", "-q", REPO_URL, REPO], check=True)
 os.chdir(REPO)
@@ -95,6 +92,29 @@ print("torch", torch.__version__, "CUDA", torch.version.cuda, "transformers", tr
 for i in range(n_gpu):
     print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
 assert n_gpu >= len(GPU_SEEDS), f"need {len(GPU_SEEDS)} GPU(s), found {n_gpu}" """),
+    ]
+
+
+def notebook(name: str, spec: dict) -> dict:
+    camp = spec["campaign"]
+    pilot = camp == "pilot"
+    probe = spec.get("memory_probe")
+    cells = [
+        _md(f"""# Revision campaign: {name}
+
+Runs {spec['what']}.
+
+Launched with `scripts/kaggle_run.sh {name} <commit>`, which sets `REPO_COMMIT` below. Cells: clone the
+repository at that commit, install, check the GPUs, run the tests (a skipped CUDA test fails the notebook),
+run the smoke config on the GPU, {f"check that {probe} fits a T4 (memory probe), " if probe else ""}then {
+"run the pilot in one process on GPU 0" if pilot else "run the campaign in two processes, one per T4, split by seed"
+}. Success is judged by the result files.
+Everything under `results/revision/` is zipped into `/kaggle/working/`; logs are in `/kaggle/working/logs/`."""),
+        _code(f"""REPO_COMMIT = "SET_BY_KAGGLE_RUN"  # written by scripts/kaggle_run.sh
+REPO_URL = "{REPO_URL}"
+CAMPAIGN = "{camp}"
+GPU_SEEDS = {spec['gpu_seeds']!r}  # GPU -> seeds (None: the pilot's own)"""),
+        *_setup_cells(),
         _code("""# every test, CUDA-only ones included: a skipped CUDA test fails the notebook
 tests = subprocess.run([sys.executable, "-m", "pytest", "-q", "tests/"], env={**ENV, "REQUIRE_CUDA_TESTS": "1"})
 assert tests.returncode == 0, "tests failed (or a CUDA-only test was skipped)" """),
@@ -103,6 +123,12 @@ for args in (["--campaign", "smoke"], ["--campaign", "pilot", "--config", "confi
     smoke = subprocess.run([sys.executable, "scripts/run_revision.py", *args, "--device", "cuda",
                             "--out-dir", "/tmp/smoke"], env=ENV)
     assert smoke.returncode == 0, f"smoke run failed: {args}" """),
+        *([_code(f"""# fail early if {probe} does not fit a T4: one step of each training phase, peaks printed
+probe = subprocess.run([sys.executable, "scripts/run_revision.py", "--campaign", CAMPAIGN, "--memory-probe", "{probe}",
+                        "--device", "cuda", "--max-reserved-gib", "{MEMORY_LIMIT_GIB}"],
+                       env={{**ENV, "CUDA_VISIBLE_DEVICES": "0"}})
+assert probe.returncode == 0, "memory probe failed: peak reserved memory over {MEMORY_LIMIT_GIB} GiB, see above" """)]
+          if probe else []),
         _code("""import time
 os.makedirs("/kaggle/working/logs", exist_ok=True)
 procs, logs = {}, {}
@@ -159,6 +185,38 @@ assert ok, "incomplete results: see the check above and the logs in /kaggle/work
             "nbformat": 4, "nbformat_minor": 5}
 
 
+def diag_notebook(name: str, spec: dict) -> dict:
+    cells = [
+        _md(f"""# Revision diagnostic: {name}
+
+Runs {spec['what']}.
+
+Launched with `scripts/kaggle_run.sh {name} <commit>`, which sets `REPO_COMMIT` below. Cells: clone the
+repository at that commit, install, check the GPU, run `{spec['script']}` in one process on GPU 0, print its
+log. Everything under `{spec['out']}/` is zipped into `/kaggle/working/`; the log is in `/kaggle/working/logs/`."""),
+        _code(f"""REPO_COMMIT = "SET_BY_KAGGLE_RUN"  # written by scripts/kaggle_run.sh
+REPO_URL = "{REPO_URL}"
+GPU_SEEDS = {{0: None}}  # one process on GPU 0"""),
+        *_setup_cells(),
+        _code(f"""os.makedirs("/kaggle/working/logs", exist_ok=True)
+log = "/kaggle/working/logs/{name}.log"
+cmd = [sys.executable, "{spec['script']}", {", ".join(json.dumps(a) for a in spec['args'])}, "--device", "cuda",
+       "--out", "{spec['out']}"]
+with open(log, "w") as f:
+    run = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT,
+                         env={{**ENV, "CUDA_VISIBLE_DEVICES": "0", "PYTHONUNBUFFERED": "1"}})
+print(open(log).read())"""),
+        _code(f"""import shutil
+archive = shutil.make_archive("/kaggle/working/{name}", "zip", "{spec['out']}")
+print("results ->", archive)
+assert run.returncode == 0, "the diagnostic failed: see the log above" """),
+    ]
+    return {"cells": _with_ids(cells), "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python",
+                                                        "name": "python3"},
+                                         "language_info": {"name": "python"}, "accelerator": "GPU"},
+            "nbformat": 4, "nbformat_minor": 5}
+
+
 def metadata(name: str) -> dict:
     slug = f"unlearning-revision-{name.replace('_', '-')}"
     return {"id": "${KAGGLE_USERNAME}/" + slug, "title": slug, "code_file": f"{name}.ipynb",
@@ -168,10 +226,12 @@ def metadata(name: str) -> dict:
 
 
 def main() -> None:
-    for name, spec in NOTEBOOKS.items():
+    builds = [(n, notebook(n, s)) for n, s in NOTEBOOKS.items()] + [(n, diag_notebook(n, s))
+                                                                    for n, s in DIAGNOSTICS.items()]
+    for name, nb in builds:
         folder = ROOT / name
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / f"{name}.ipynb").write_text(json.dumps(notebook(name, spec), indent=1) + "\n")
+        (folder / f"{name}.ipynb").write_text(json.dumps(nb, indent=1) + "\n")
         (folder / "kernel-metadata.json").write_text(json.dumps(metadata(name), indent=2) + "\n")
         print(f"wrote {folder}")
 

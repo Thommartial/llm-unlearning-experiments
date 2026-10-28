@@ -15,6 +15,18 @@ from unlearning.config import load_config
 REVISION = Path("configs/revision")
 
 
+def _uncalibrated(dst: Path) -> Path:
+    """A copy of the revision configs with every `# set from pilot` value back to null."""
+    import re
+
+    dst.mkdir(parents=True, exist_ok=True)
+    for f in REVISION.glob("*.yaml"):
+        blank = re.sub(r"(?m)^(\s+\w+: )(\S+)(\s*)(# set from pilot)",  # the comment keeps its column
+                       lambda m: m[1] + "null" + " " * max(1, len(m[2]) + len(m[3]) - 4) + m[4], f.read_text())
+        (dst / f.name).write_text(blank)
+    return dst
+
+
 def _script():
     spec = importlib.util.spec_from_file_location("run_revision", "scripts/run_revision.py")
     mod = importlib.util.module_from_spec(spec)
@@ -29,15 +41,17 @@ def _script():
     ("fed_ext", 9, {"gpt2"}, {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}),
     ("lora", 5, {"TinyLlama/TinyLlama_v1.1"}, {"unlearn.finetune_lr", "unlearn.learning_rate"}),
 ])
-def test_campaign_configs(name, n_units, models, requires):
+def test_campaign_configs(name, n_units, models, requires, tmp_path):
     path = REVISION / f"{name}.yaml"
     raw = campaign.read_campaign(path)
     us = campaign.units(raw)
     assert len(us) == n_units and {u.model for u in us} == models
     assert set(raw["campaign"]["requires"]) == requires
-    with pytest.raises(SystemExit, match="set from pilot"):  # placeholders are still null
-        campaign.check_calibrated(raw)
-    text = path.read_text()
+    campaign.check_calibrated(raw)  # the pilot's values are set
+    blank = _uncalibrated(tmp_path) / f"{name}.yaml"
+    with pytest.raises(SystemExit, match="set from pilot"):  # every required value is marked
+        campaign.check_calibrated(campaign.read_campaign(blank))
+    text = blank.read_text()
     assert all(f"{k.split('.')[1]}: null" in text for k in requires) and "# set from pilot" in text
     cfg = campaign.resolve(path, us[0])
     assert cfg.data.dataset == "tofu_official" and cfg.unlearn.finetune_epochs == 3
@@ -145,7 +159,8 @@ def test_script_check_and_merge(smoke, tmp_path):
     assert script.main(["--merge", str(out), "--out", str(merged)]) == 0
     assert len(campaign.read_rows(merged)) == len(campaign.read_rows(out))
     with pytest.raises(SystemExit, match="set from pilot"):
-        script.main(["--campaign", "central", "--out", str(tmp_path / "c.csv")])
+        script.main(["--campaign", "central", "--config", str(_uncalibrated(tmp_path / "blank") / "central.yaml"),
+                     "--out", str(tmp_path / "c.csv")])
 
 
 def test_pilot_on_smoke_config(tmp_path):
@@ -260,10 +275,7 @@ SELECTED = {"finetune_lr": 5e-05, "rounds": 5, "rho_factor": 1.0, "lora_finetune
 
 
 def _calibration(tmp_path, selected=SELECTED):
-    import shutil
-
-    configs = tmp_path / "configs"
-    shutil.copytree(REVISION, configs)
+    configs = _uncalibrated(tmp_path / "configs")
     report = tmp_path / "pilot_calibration.json"
     report.write_text(json.dumps({"selected": selected, "measurements": {}, "flags": []}))
     return configs, report

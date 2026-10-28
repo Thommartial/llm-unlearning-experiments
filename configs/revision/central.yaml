@@ -22,6 +22,7 @@ unlearn:
   learning_rate: 1.0e-5
   batch_size: 4
   eval_batch_size: 64
+  grad_accum_steps: 1          # GPT-2-medium: 2 (its variant below), micro-batches of 8
   retain_weight: 1.0
   beta: 0.1
 attack:
@@ -32,4 +33,6 @@ campaign:
   seeds: [0, 1, 2, 3, 4]
   requires: [unlearn.finetune_lr]
   variants:
-    - {name: central, kind: central}
+    - {name: central, kind: central, models: [distilgpt2, gpt2]}
+    # same settings and effective batch 16; 2 x 8 records per step to fit a T4 (memory probe)
+    - {name: central, kind: central, models: [gpt2-medium], unlearn: {grad_accum_steps: 2}}

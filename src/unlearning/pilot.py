@@ -92,16 +92,19 @@ def _finetune_grid(log: _Log, cfg, lrs, epochs: int, tol: float, tag: str):
     world = tofu_metrics.load_eval_sets(_with(cfg, data={"tofu_metrics": True}), tok, splits)["world_facts"].answer
     base_state = central._snapshot(model)
     base_wf = _loss(model, world, cfg, dev)
+    base_retain = _loss(model, splits.retain, cfg, dev)
     results, states = {}, {}
     for lr in lrs:
         central._restore(model, base_state)
         set_seed(cfg.seed)
         c = _with(cfg, unlearn={"finetune_lr": lr, "finetune_epochs": epochs})
+        steps = unlearn.StepStats()
         with log.phase(f"{tag}_finetune_lr{lr:g}"):
-            unlearn.finetune_base(c, splits, dev, model=model)
+            unlearn.finetune_base(c, splits, dev, model=model, stats=steps)
         results[lr] = {"retain_loss": _loss(model, splits.retain, cfg, dev), "world_facts_loss": _loss(model, world, cfg, dev)}
         states[lr] = central._snapshot(model)
-        log.measure(f"{tag}_lr{lr:g}", base_world_facts_loss=base_wf, **results[lr])
+        log.measure(f"{tag}_lr{lr:g}", base_world_facts_loss=base_wf, base_retain_loss=base_retain, **results[lr],
+                    steps=steps.summary())
     ok = [lr for lr in lrs if results[lr]["world_facts_loss"] <= (1 + tol) * base_wf]
     if ok:
         chosen = min(ok, key=lambda lr: results[lr]["retain_loss"])
@@ -221,12 +224,13 @@ def run_pilot(path, device: str | None = None, out_dir="results/revision", out_c
     log.report["selected"]["lora_learning_rate"] = unlearn_lr
     before = _loss(model, lsplits.forget, lcfg, dev)
     set_seed(cfg.seed)
+    steps = unlearn.StepStats()
     with log.phase("lora_ga_sanity"):
         unlearn.apply_unlearning(model, lsplits, _with(lcfg, unlearn={"method": "gradient_ascent",
-                                                                      "learning_rate": unlearn_lr}), dev)
+                                                                      "learning_rate": unlearn_lr}), dev, steps)
     after = _loss(model, lsplits.forget, lcfg, dev)
     log.measure("lora_ga_sanity", learning_rate=unlearn_lr, forget_loss_before=before, forget_loss_after=after,
-                rises=after > before)
+                rises=after > before, steps=steps.summary())
     if not after > before:
         log.flag(f"LoRA GA at {unlearn_lr:g} does not raise the forget loss ({before:.4f} -> {after:.4f})")
     _free(model)

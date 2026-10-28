@@ -45,6 +45,9 @@ class UnlearnConfig:
     finetune_lr: float | None = None    # base fine-tuning; defaults to learning_rate
     batch_size: int = 4                    # unlearning
     train_batch_size: int | None = None    # fine-tuning and FedAvg; defaults to batch_size
+    # micro-batches per train_batch_size batch (fine-tuning, retrain, FedAvg): same gradient and
+    # effective batch, less activation memory; unlearning batches are not split
+    grad_accum_steps: int = 1
     eval_batch_size: int = 64              # per-record MIA scoring
     retain_weight: float = 1.0       # gradient_difference
     beta: float = 0.1                # npo
