@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{TPR at 0.1\% FPR with scores pooled over seeds, its per-seed mean, and TPR at 1\% FPR within the base-difficulty strata (outlier forget vs outlier non-members), pooled the same way.}
-\label{tab:low-fpr}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{2pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\caption{TPR at 0.1\% FPR with scores pooled over seeds, its per-seed mean, and TPR at 1\% FPR within the base-difficulty strata (outlier forget vs outlier non-members), pooled the same way.}\label{tab:low-fpr}\\
 \toprule
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Seeds} & \textbf{Negatives} & \textbf{\shortstack{TPR@0.1\%\\pooled}} & \textbf{\shortstack{TPR at zero\\false positives\\(400 non-members)}} & \textbf{\shortstack{TPR@1\%\\outlier}} & \textbf{\shortstack{TPR@1\%\\typical}} \\
 \midrule
+\endfirsthead
+\multicolumn{11}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Seeds} & \textbf{Negatives} & \textbf{\shortstack{TPR@0.1\%\\pooled}} & \textbf{\shortstack{TPR at zero\\false positives\\(400 non-members)}} & \textbf{\shortstack{TPR@1\%\\outlier}} & \textbf{\shortstack{TPR@1\%\\typical}} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{11}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 DistilGPT-2 & central & Retrain & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.003$ & $0.000$ & $0.013$ \\
 DistilGPT-2 & central & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.017$ & $0.029$ \\
 DistilGPT-2 & central & Retrain & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.001$ & $0.000$ & $0.008$ \\
@@ -145,9 +153,6 @@ Pythia-1B (LoRA) & central & NPO & Loss thr. & primary & 5 & 2000 & $0.000$ & $0
 Pythia-1B (LoRA) & central & NPO & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
 Pythia-1B (LoRA) & central & NPO & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
 Pythia-1B (LoRA) & central & NPO & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Pooling puts runs with different models on one threshold; with 2,000 negatives, 0.1\% FPR corresponds to 2 false positives. TPR at zero false positives (400 non-members): the per-seed TPR@0.1\%, which allows no false positive at that size, as mean and t-interval over seeds (no pooling). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Pooling puts runs with different models on one threshold; with 2,000 negatives, 0.1\% FPR corresponds to 2 false positives. TPR at zero false positives (400 non-members): the per-seed TPR@0.1\%, which allows no false positive at that size, as mean and t-interval over seeds (no pooling). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

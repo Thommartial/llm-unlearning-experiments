@@ -1,16 +1,26 @@
-\begin{table*}[t]
-\centering
-\caption{Membership inference before and after federated unlearning (Ref.-calib., primary non-members). Gap is the post-unlearning AUC minus the retrained model's (same seed); advantage is $|\mathrm{AUC}-0.5|$; outliers by base-model difficulty, stratum-matched.}
-\label{tab:federated-ref-calibrated-primary}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{2pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lccccccccccc@{}}
+\caption{Membership inference before and after federated unlearning (Ref.-calib., primary non-members). Gap is the post-unlearning AUC minus the retrained model's (same seed); advantage is $|\mathrm{AUC}-0.5|$; outliers by base-model difficulty, stratum-matched.}\label{tab:federated-ref-calibrated-primary}\\
 \toprule
  & & & \multicolumn{2}{c}{\textbf{MIA AUC}} & & & \multicolumn{3}{c}{\textbf{Post-unlearning advantage}} & \multicolumn{2}{c}{\textbf{Update AUC}} \\
 \cmidrule(lr){4-5}\cmidrule(lr){8-10}\cmidrule(lr){11-12}
 \textbf{Model} & \textbf{Setting} & \textbf{Stage} & \textbf{Pre} & \textbf{Post} & \textbf{Gap} & \textbf{TPR@1\%} & \textbf{All} & \textbf{Typical} & \textbf{Outlier} & \textbf{Score chg.} & \textbf{Grad. align.} \\
 \midrule
+\endfirsthead
+\multicolumn{12}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+ & & & \multicolumn{2}{c}{\textbf{MIA AUC}} & & & \multicolumn{3}{c}{\textbf{Post-unlearning advantage}} & \multicolumn{2}{c}{\textbf{Update AUC}} \\
+\cmidrule(lr){4-5}\cmidrule(lr){8-10}\cmidrule(lr){11-12}
+\textbf{Model} & \textbf{Setting} & \textbf{Stage} & \textbf{Pre} & \textbf{Post} & \textbf{Gap} & \textbf{TPR@1\%} & \textbf{All} & \textbf{Typical} & \textbf{Outlier} & \textbf{Score chg.} & \textbf{Grad. align.} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{12}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 GPT-2 & by\_author, $K=5$ & Retrain & $0.55 \pm 0.02$ & $0.45 \pm 0.02$ & $0.00 \pm 0.00$ & $0.01 \pm 0.00$ & $0.05 \pm 0.02$ & $0.06 \pm 0.01$ & $0.07 \pm 0.07$ & -- & $0.97 \pm 0.01$ \\
 GPT-2 & by\_author, $K=5$ & Client GA, upload$^{\dagger}$ & $0.55 \pm 0.02$ & $0.44 \pm 0.07$ & $-0.01 \pm 0.09$ & $0.01 \pm 0.01$ & $0.06 \pm 0.07$ & $0.07 \pm 0.08$ & $0.08 \pm 0.17$ & -- & $0.64 \pm 0.05$ \\
 GPT-2 & by\_author, $K=5$ & Client GA, global & $0.55 \pm 0.02$ & $0.45 \pm 0.04$ & $0.00 \pm 0.06$ & $0.00 \pm 0.00$ & $0.05 \pm 0.04$ & $0.05 \pm 0.05$ & $0.05 \pm 0.02$ & -- & $0.75 \pm 0.08$ \\
@@ -29,9 +39,6 @@ GPT-2 & iid, $K=5$ & Client GA, global & $0.55 \pm 0.01$ & $0.46 \pm 0.02$ & $0.
 GPT-2-medium & iid, $K=5$ & Retrain & $0.62 \pm 0.02$ & $0.45 \pm 0.01$ & $0.00 \pm 0.00$ & $0.01 \pm 0.00$ & $0.05 \pm 0.01$ & $0.06 \pm 0.02$ & $0.04 \pm 0.04$ & -- & $0.98 \pm 0.00$ \\
 GPT-2-medium & iid, $K=5$ & Client GA, upload$^{\dagger}$ & $0.62 \pm 0.02$ & $0.47 \pm 0.03$ & $0.02 \pm 0.04$ & $0.01 \pm 0.01$ & $0.03 \pm 0.03$ & $0.04 \pm 0.04$ & $0.05 \pm 0.05$ & -- & $0.64 \pm 0.02$ \\
 GPT-2-medium & iid, $K=5$ & Client GA, global & $0.62 \pm 0.02$ & $0.55 \pm 0.04$ & $0.09 \pm 0.03$ & $0.01 \pm 0.01$ & $0.05 \pm 0.04$ & $0.03 \pm 0.04$ & $0.06 \pm 0.07$ & -- & $0.80 \pm 0.05$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

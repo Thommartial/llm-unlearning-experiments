@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{Exploratory (post hoc): two-sided distance $|\mathrm{AUC}-\mathrm{AUC}_{\mathrm{retrain}}|$ to the retrained model of the same seed (federated: the federated retrain), overall and per stratum, added after seeing the GPT-2 results; next to MUSE's PrivLeak~\cite{shi2024muse}, $(\mathrm{AUC}-\mathrm{AUC}_{\mathrm{retrain}})/\mathrm{AUC}_{\mathrm{retrain}}$, and TOFU forget quality. H1 (Table~\ref{tab:h1}) is the pre-registered one-sided test.}
-\label{tab:h1-two-sided}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{2pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\caption{Exploratory (post hoc): two-sided distance $|\mathrm{AUC}-\mathrm{AUC}_{\mathrm{retrain}}|$ to the retrained model of the same seed (federated: the federated retrain), overall and per stratum, added after seeing the GPT-2 results; next to MUSE's PrivLeak from Shi et al. (ICLR 2025), $(\mathrm{AUC}-\mathrm{AUC}_{\mathrm{retrain}})/\mathrm{AUC}_{\mathrm{retrain}}$, and TOFU forget quality. H1 (Table~\ref{tab:h1}) is the pre-registered one-sided test.}\label{tab:h1-two-sided}\\
 \toprule
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{All} & \textbf{Typical} & \textbf{Outlier} & \textbf{Below} & \textbf{PrivLeak (\%)} & \textbf{Forget quality} \\
 \midrule
+\endfirsthead
+\multicolumn{11}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{All} & \textbf{Typical} & \textbf{Outlier} & \textbf{Below} & \textbf{PrivLeak (\%)} & \textbf{Forget quality} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{11}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 DistilGPT-2 & central & GA$^{\dagger}$ & Loss thr. & primary & $0.029 \pm 0.030$ & $0.023 \pm 0.030$ & $0.064 \pm 0.060$ & 1/5 & $6.2 \pm 7.4$ & $0.000 \pm 0.000$ \\
 DistilGPT-2 & central & GA$^{\dagger}$ & Loss thr. & holdout10 & $0.115 \pm 0.109$ & $0.117 \pm 0.050$ & $0.130 \pm 0.101$ & 0/5 & $26.6 \pm 25.3$ & $0.000 \pm 0.000$ \\
 DistilGPT-2 & central & GA$^{\dagger}$ & Min-K\% & primary & $0.025 \pm 0.015$ & $0.017 \pm 0.020$ & $0.032 \pm 0.018$ & 2/5 & $2.6 \pm 7.9$ & $0.000 \pm 0.000$ \\
@@ -153,9 +161,6 @@ Pythia-1B (LoRA) & central & NPO & Min-K\% & primary & $0.385 \pm 0.032$ & $0.39
 Pythia-1B (LoRA) & central & NPO & Min-K\% & holdout10 & $0.320 \pm 0.046$ & $0.404 \pm 0.042$ & $0.333 \pm 0.089$ & 5/5 & $-83.6 \pm 10.6$ & $0.000 \pm 0.001$ \\
 Pythia-1B (LoRA) & central & NPO & Ref.-calib. & primary & $0.421 \pm 0.056$ & $0.407 \pm 0.041$ & $0.438 \pm 0.082$ & 5/5 & $-91.9 \pm 9.5$ & $0.000 \pm 0.001$ \\
 Pythia-1B (LoRA) & central & NPO & Ref.-calib. & holdout10 & $0.547 \pm 0.072$ & $0.549 \pm 0.055$ & $0.488 \pm 0.111$ & 5/5 & $-88.2 \pm 10.2$ & $0.000 \pm 0.001$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Strata by base-model difficulty, stratum-matched. Below: seeds whose AUC is under the retrained model's. PrivLeak: per seed, over all records, in percent (MUSE's convention; near 0 for good unlearning). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Strata by base-model difficulty, stratum-matched. Below: seeds whose AUC is under the retrained model's. PrivLeak: per seed, over all records, in percent (MUSE's convention; near 0 for good unlearning). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

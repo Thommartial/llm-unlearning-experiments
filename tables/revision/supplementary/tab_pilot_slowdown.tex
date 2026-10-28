@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{Phase times of seed 0 run alone (pilot, LoRA pilot) and with a second process on the other GPU (campaign).}
-\label{tab:pilot-slowdown}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllcccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}llllcccc@{}}
+\caption{Phase times of seed 0 run alone (pilot, LoRA pilot) and with a second process on the other GPU (campaign).}\label{tab:pilot-slowdown}\\
 \toprule
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Phase} & \textbf{Alone (s)} & \textbf{Campaign (s)} & \textbf{Ratio} & \textbf{Same GPU} \\
 \midrule
+\endfirsthead
+\multicolumn{8}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Phase} & \textbf{Alone (s)} & \textbf{Campaign (s)} & \textbf{Ratio} & \textbf{Same GPU} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{8}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 GPT-2 & central & Retrain & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
 GPT-2 & central & Retrain & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
 GPT-2 & central & Retrain & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
@@ -78,9 +86,6 @@ Pythia-1B (LoRA) & central & NPO & pre\_eval & $189.1$ & $180.9$ & $0.96$ & yes 
 Pythia-1B (LoRA) & central & NPO & method & $74.5$ & $73.5$ & $0.99$ & yes \\
 Pythia-1B (LoRA) & central & NPO & post\_eval & $216.2$ & $207.7$ & $0.96$ & yes \\
 Pythia-1B (LoRA) & central & NPO & alignment & $147.9$ & $140.3$ & $0.95$ & yes \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize $^{\dagger}$Model collapsed: retain loss rose more than threefold in 5/5 seeds. GA: both central models; GD: Pythia-1B (LoRA); client-GA upload: GPT-2 iid\_K5 (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+$^{\dagger}$Model collapsed: retain loss rose more than threefold in 5/5 seeds. GA: both central models; GD: Pythia-1B (LoRA); client-GA upload: GPT-2 iid\_K5 (intermediate model before recovery; the released global model is not collapsed).\par
+}

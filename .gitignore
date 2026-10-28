@@ -39,6 +39,11 @@ checkpoints/
 *.bin
 wandb/
 *.log
+# LaTeX build files of the supplementary tables; the PDF and its sources stay tracked
+tables/revision/supplementary.aux
+!tables/revision/supplementary.pdf
+!tables/revision/supplementary.tex
+!tables/revision/supplementary/
 
 # OS / editor
 .DS_Store

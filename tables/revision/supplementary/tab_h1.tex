@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{H1: post-unlearning AUC minus the retrained model's AUC, paired by seed.}
-\label{tab:h1}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllllcc@{}}
+\caption{H1: post-unlearning AUC minus the retrained model's AUC, paired by seed.}\label{tab:h1}\\
 \toprule
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Gap} & \textbf{Verdict} \\
 \midrule
+\endfirsthead
+\multicolumn{7}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Gap} & \textbf{Verdict} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{7}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 DistilGPT-2 & central & GA$^{\dagger}$ & Loss thr. & primary & $0.027 \pm 0.033$ & inconclusive \\
 DistilGPT-2 & central & GA$^{\dagger}$ & Loss thr. & holdout10 & $0.115 \pm 0.109$ & above retrain \\
 DistilGPT-2 & central & GA$^{\dagger}$ & Min-K\% & primary & $0.012 \pm 0.035$ & inconclusive \\
@@ -153,9 +161,6 @@ Pythia-1B (LoRA) & central & NPO & Min-K\% & primary & $-0.385 \pm 0.032$ & belo
 Pythia-1B (LoRA) & central & NPO & Min-K\% & holdout10 & $-0.320 \pm 0.046$ & below retrain \\
 Pythia-1B (LoRA) & central & NPO & Ref.-calib. & primary & $-0.421 \pm 0.056$ & below retrain \\
 Pythia-1B (LoRA) & central & NPO & Ref.-calib. & holdout10 & $-0.547 \pm 0.072$ & below retrain \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: above retrain (CI lower bound $>0$, supports H1), below retrain (CI upper bound $<0$, contradicts H1) or inconclusive. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: above retrain (CI lower bound $>0$, supports H1), below retrain (CI upper bound $<0$, contradicts H1) or inconclusive. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

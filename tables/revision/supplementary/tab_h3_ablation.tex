@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{H3 ablation (appendix): retrain-relative gap of outliers minus typical records, paired by seed.}
-\label{tab:h3-ablation}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{2pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\caption{H3 ablation (appendix): retrain-relative gap of outliers minus typical records, paired by seed.}\label{tab:h3-ablation}\\
 \toprule
 \textbf{Model} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Definition} & \textbf{Gap out.} & \textbf{Gap typ.} & \textbf{Difference} & \textbf{Verdict} & \textbf{Adv. out.} & \textbf{Adv. typ.} \\
 \midrule
+\endfirsthead
+\multicolumn{11}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Model} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Definition} & \textbf{Gap out.} & \textbf{Gap typ.} & \textbf{Difference} & \textbf{Verdict} & \textbf{Adv. out.} & \textbf{Adv. typ.} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{11}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 DistilGPT-2 & GA$^{\dagger}$ & Loss thr. & primary & legacy & $-0.24$ & $0.14$ & $-0.388 \pm 0.363$ & typical higher & $0.19$ & $0.08$ \\
 DistilGPT-2 & GA$^{\dagger}$ & Loss thr. & primary & legacy\_pooled & $0.16$ & $0.11$ & $0.049 \pm 0.110$ & inconclusive & $0.07$ & $0.05$ \\
 DistilGPT-2 & GA$^{\dagger}$ & Loss thr. & holdout10 & legacy & $-0.22$ & $0.26$ & $-0.480 \pm 0.378$ & typical higher & $0.28$ & $0.01$ \\
@@ -297,9 +305,6 @@ Pythia-1B (LoRA) & NPO & Ref.-calib. & primary & legacy & $-0.50$ & $-0.39$ & $-
 Pythia-1B (LoRA) & NPO & Ref.-calib. & primary & legacy\_pooled & $-0.37$ & $-0.43$ & $0.059 \pm 0.023$ & outliers higher & $0.46$ & $0.47$ \\
 Pythia-1B (LoRA) & NPO & Ref.-calib. & holdout10 & legacy & $-0.63$ & $-0.51$ & $-0.120 \pm 0.063$ & typical higher & $0.43$ & $0.43$ \\
 Pythia-1B (LoRA) & NPO & Ref.-calib. & holdout10 & legacy\_pooled & $-0.54$ & $-0.54$ & $-0.007 \pm 0.073$ & inconclusive & $0.41$ & $0.43$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: outliers higher (CI lower bound $>0$), typical higher (CI upper bound $<0$) or inconclusive. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Verdict: outliers higher (CI lower bound $>0$), typical higher (CI upper bound $<0$) or inconclusive. $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

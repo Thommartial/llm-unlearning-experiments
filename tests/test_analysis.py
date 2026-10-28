@@ -284,16 +284,21 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     assert {"tab_central_loss_threshold_primary.tex", "tab_federated_loss_threshold_primary.tex", "tab_h1.tex",
             "tab_h2.tex", "tab_h3.tex", "tab_low_fpr.tex", "tab_update.tex", "tab_control.tex", "tab_costs.tex",
             "tab_tofu.tex", "tab_hyperparameters.tex", "tab_pilot_slowdown.tex"} <= names
-    for p in a["tables"]:
+    for p in a["tables"]:  # the paper tables as table*, every full table as a longtable in supplementary/
         text = p.read_text()
-        assert "\\toprule" in text and "\\bottomrule" in text and text.count("\\begin{table") == 1
-    fed = (tmp_path / "tab" / "tab_federated_loss_threshold_primary.tex").read_text()
+        env = "\\begin{table*}" if p.name.endswith("_paper.tex") else "\\begin{longtable}"
+        assert "\\toprule" in text and "\\bottomrule" in text and text.count(env) == 1, p.name
+        assert (p.parent.name == "supplementary") != p.name.endswith("_paper.tex"), p
+    assert sorted(p.name for p in (tmp_path / "tab").glob("tab_*.tex")) == ["tab_h1_paper.tex",
+                                                                           "tab_h1_two_sided_paper.tex"]
+    full_dir = tmp_path / "tab" / "supplementary"
+    fed = (full_dir / "tab_federated_loss_threshold_primary.tex").read_text()
     assert "\\textbf{All}" in fed and "\\textbf{Typical}" in fed and "\\textbf{Outlier}" in fed
-    central = (tmp_path / "tab" / "tab_central_loss_threshold_primary.tex").read_text()
+    central = (full_dir / "tab_central_loss_threshold_primary.tex").read_text()
     assert "\\pm" in central and "GPT-2-medium" in central and "\\textbf{All}" in central
-    tofu = (tmp_path / "tab" / "tab_tofu.tex").read_text()
+    tofu = (full_dir / "tab_tofu.tex").read_text()
     assert "Rows with model utility 0: 1 of" in tofu and "MU excl. 0" in tofu
-    low = (tmp_path / "tab" / "tab_low_fpr.tex").read_text()
+    low = (full_dir / "tab_low_fpr.tex").read_text()
     assert "TPR at zero false positives (40 non-members)" in low and "\\shortstack{TPR@0.1\\%\\\\pooled}" in low
     figs = {p.name for p in a["figures"]}
     assert {"fig_rev_central.pdf", "fig_rev_strata.pdf", "fig_rev_update.pdf", "fig_rev_fed_update.pdf",
@@ -302,12 +307,12 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     assert (tmp_path / "tab" / "h1.csv").exists()
     two = pd.read_csv(tmp_path / "tab" / "h1_two_sided.csv")
     assert set(two["kind"]) == {"central", "federated"} and (two["mean"] >= 0).all()
-    tex = (tmp_path / "tab" / "tab_h1_two_sided.tex").read_text()
+    tex = (full_dir / "tab_h1_two_sided.tex").read_text()
     assert "Exploratory (post hoc)" in tex and "\\label{tab:h1-two-sided}" in tex and "Forget quality" in tex
-    assert "MUSE's PrivLeak~\\cite{shi2024muse}" in tex and "PrivLeak (\\%)" in tex
+    assert "MUSE's PrivLeak from Shi et al. (ICLR 2025)" in tex and "PrivLeak (\\%)" in tex
     assert two["privleak_mean"].notna().any()
     assert {"tab_h1_two_sided.tex", "tab_h1_paper.tex", "tab_h1_two_sided_paper.tex"} <= names
-    full, paper = ((tmp_path / "tab" / f"tab_h1{s}.tex").read_text() for s in ("", "_paper"))
+    full, paper = (full_dir / "tab_h1.tex").read_text(), (tmp_path / "tab" / "tab_h1_paper.tex").read_text()
     assert "\\textbf{Verdict}" in full and "above retrain" in full and "CI excludes" not in full
     assert "Ref.-calib." in full and "Ref.-calib." not in paper and "Non-members" not in paper
     assert "\\label{tab:h1-paper}" in paper and "Table~\\ref{tab:h1} (appendix)" in paper
@@ -316,9 +321,9 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     two = (tmp_path / "tab" / "tab_h1_two_sided_paper.tex").read_text()
     assert "Exploratory (post hoc)" in two and "\\ref{tab:h1-paper}" in two and "Ref.-calib." not in two
     assert "PrivLeak (\\%)" in two and "\\cite{shi2024muse}" in two
-    update = (tmp_path / "tab" / "tab_update.tex").read_text()
+    update = (full_dir / "tab_update.tex").read_text()
     assert "nan" not in update and "release" in update  # central rows have no view column
-    h3 = (tmp_path / "tab" / "tab_h3.tex").read_text()
+    h3 = (full_dir / "tab_h3.tex").read_text()
     assert "outliers higher" in h3 and "CI excl." not in h3
 
 
@@ -353,7 +358,7 @@ def test_collapsed_models_are_marked_in_every_table(tmp_path):
         assert "& lora &" not in text, p.name  # Run reads central for the LoRA campaign
     assert {"tab_central_loss_threshold_primary.tex", "tab_h1.tex", "tab_h1_paper.tex", "tab_h1_two_sided.tex",
             "tab_h3.tex", "tab_update.tex", "tab_tofu.tex"} <= set(with_ga)
-    tofu = (tmp_path / "tab" / "tab_tofu.tex").read_text()
+    tofu = (tmp_path / "tab" / "supplementary" / "tab_tofu.tex").read_text()
     assert "Pythia-1B (LoRA) & central & GA$^{\\dagger}$" in tofu
     assert ("Retrain rows with model utility 0 are not collapsed: one of the nine harmonic-mean components is 0, "
             "ROUGE on real authors (Pythia-1B (LoRA), central: 5/5 seeds).") in tofu
@@ -376,6 +381,61 @@ def test_collapsed_models_are_marked_in_every_table(tmp_path):
                                    flags) == ("$^{\\dagger}$Model collapsed: retain loss rose more than threefold in "
                                               "3/3 seeds. client-GA upload: GPT-2 iid\\_K3, GPT-2 iid\\_K5 "
                                               "(intermediate model before recovery).")
+
+
+def test_supplementary_document(results, tmp_path):
+    """Every full table as a longtable in supplementary.tex; compiles without overfull boxes."""
+    import re
+    import shutil
+    import subprocess
+
+    a = analysis.analyse(results, tmp_path / "fig", tmp_path / "tab")
+    tab = tmp_path / "tab"
+    doc = (tab / "supplementary.tex").read_text()
+    full = sorted(p.name for p in a["tables"] if not p.name.endswith("_paper.tex"))
+    inputs = sorted(f"{n}.tex" for n in re.findall(r"\\input\{supplementary/([^}]*)\}", doc))
+    assert inputs == full and "tab_h1_paper" not in doc  # full tables only
+    assert "longtable" in doc and "landscape" in doc and "\\section{Hypotheses}" in doc
+    for name in full:
+        text = (tab / "supplementary" / name).read_text()
+        assert "\\begin{longtable}" in text and "\\endhead" in text and "\\begin{table" not in text, name
+        assert "\\cite" not in text, name
+    two = (tab / "supplementary" / "tab_h1_two_sided.tex").read_text()
+    assert "MUSE's PrivLeak from Shi et al. (ICLR 2025)," in two and "Table~\\ref{tab:h1}" in two  # in the supplement
+    if shutil.which("pdflatex") is None:
+        pytest.skip("pdflatex not installed")
+    for _ in range(3):  # longtable column widths settle over passes
+        r = subprocess.run(["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "supplementary.tex"], cwd=tab,
+                           capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout[-2000:]
+    log = (tab / "supplementary.log").read_text(errors="replace")
+    assert "Overfull" not in log and "undefined" not in log and "Rerun to get" not in log
+
+
+def test_supplementary_text_replaces_main_text_references_and_citations():
+    text = ("H1 (Table~\\ref{tab:h1}); see Table~\\ref{tab:h1-paper} and Table~\\ref{tab:rev-central}; "
+            "MUSE's PrivLeak~\\cite{shi2024muse}, defined as")
+    assert analysis._supplementary_text(text, {"tab:h1"}) == (
+        "H1 (Table~\\ref{tab:h1}); see the H1 table in the main text and a table in the main text; "
+        "MUSE's PrivLeak from Shi et al. (ICLR 2025), defined as")
+    with pytest.raises(ValueError, match="other2020"):
+        analysis._supplementary_text("\\cite{other2020}", set())
+
+
+def test_hyperparameters_give_one_row_per_lora_key():
+    base = {"model": {"precision": "fp16_amp", "lora": None}, "seed": 0,
+            "data": {"max_length": 128, "max_samples": None, "outlier_fraction": 0.3, "max_new_tokens": 128},
+            "unlearn": {"finetune_epochs": 3, "finetune_lr": 5e-5, "train_batch_size": 16, "epochs": 2,
+                        "learning_rate": 1e-5, "batch_size": 4, "eval_batch_size": 64, "retain_weight": 1.0,
+                        "beta": 0.1}, "attack": {"min_k": 0.2}}
+    lora = json.loads(json.dumps(base))
+    lora["model"]["lora"] = {"r": 16, "target_modules": {"gpt_neox": ["query_key_value", "dense"]}}
+    h = analysis.hyperparameters([("central", "u0", {**base, "model": {**base["model"], "name": "gpt2"}}),
+                                  ("lora", "u1", {**lora, "model": {**lora["model"], "name": "EleutherAI/pythia-1b"}})],
+                                 {"central": "central", "lora": "central"})
+    assert h.loc["model.lora.r", "lora"] == "16" and h.loc["model.lora", "central"] == "null"
+    assert h.loc["model.lora.target_modules.gpt_neox", "lora"] == '["query_key_value", "dense"]'
+    assert "model.lora" not in h["lora"].dropna().index and pd.isna(h.loc["model.lora.r", "central"])
 
 
 def test_end_to_end_on_a_smoke_campaign(tmp_path):

@@ -1,0 +1,50 @@
+\documentclass[10pt]{article}
+\usepackage[letterpaper,landscape,margin=0.65in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\LTcapwidth}{\textwidth}
+\renewcommand{\thetable}{S\arabic{table}}
+\title{Supplementary tables}
+\date{}
+\begin{document}
+\maketitle
+Every table is written by \texttt{scripts/analyze\_revision.py} from the campaign results in
+\texttt{results/revision}. Cells give the mean and the half-width of the 95\% $t$-interval over seeds;
+differences are paired by seed. Tables in the main text select the loss-threshold attack and the
+primary non-members from these.
+
+\section{Membership inference per attack and non-member set}
+\input{supplementary/tab_central_loss_threshold_primary}
+\input{supplementary/tab_central_loss_threshold_holdout10}
+\input{supplementary/tab_central_min_k_prob_primary}
+\input{supplementary/tab_central_min_k_prob_holdout10}
+\input{supplementary/tab_central_ref_calibrated_primary}
+\input{supplementary/tab_central_ref_calibrated_holdout10}
+\input{supplementary/tab_federated_loss_threshold_primary}
+\input{supplementary/tab_federated_loss_threshold_holdout10}
+\input{supplementary/tab_federated_min_k_prob_primary}
+\input{supplementary/tab_federated_min_k_prob_holdout10}
+\input{supplementary/tab_federated_ref_calibrated_primary}
+\input{supplementary/tab_federated_ref_calibrated_holdout10}
+
+\section{Hypotheses}
+\input{supplementary/tab_h1}
+\input{supplementary/tab_h1_two_sided}
+\input{supplementary/tab_h2}
+\input{supplementary/tab_h3}
+\input{supplementary/tab_h3_ablation}
+
+\section{Low false-positive rates, version-change attacks and control}
+\input{supplementary/tab_low_fpr}
+\input{supplementary/tab_update}
+\input{supplementary/tab_control}
+
+\section{Costs, TOFU metrics and settings}
+\input{supplementary/tab_costs}
+\input{supplementary/tab_tofu}
+\input{supplementary/tab_hyperparameters}
+\input{supplementary/tab_pilot_slowdown}
+\end{document}

@@ -2,7 +2,7 @@
 models,"distilgpt2, gpt2, gpt2-medium",gpt2,"distilgpt2, gpt2, gpt2-medium",EleutherAI/pythia-1b
 seeds,"0, 1, 2, 3, 4","0, 1, 2","0, 1, 2, 3, 4","0, 1, 2, 3, 4"
 model.precision,"""fp16_amp""","""fp16_amp""","""fp16_amp""","""fp16_amp"""
-model.lora,null,null,null,"{""alpha"": 32, ""base_dtype"": ""float16"", ""dropout"": 0.05, ""gradient_checkpointing"": true, ""r"": 16, ""target_modules"": {""gpt_neox"": [""query_key_value"", ""dense""], ""llama"": [""q_proj"", ""k_proj"", ""v_proj"", ""o_proj""]}}"
+model.lora,null,null,null,
 data.max_length,128,128,128,128
 data.max_samples,null,null,null,null
 data.outlier_fraction,0.3,0.3,0.3,0.3
@@ -24,3 +24,10 @@ federated.local_epochs,,1,1,
 federated.client_unlearn_epochs,,2,2,
 federated.rho_factor,,2.0,2.0,
 federated.recovery_rounds,,2,2,
+model.lora.alpha,,,,32
+model.lora.base_dtype,,,,"""float16"""
+model.lora.dropout,,,,0.05
+model.lora.gradient_checkpointing,,,,true
+model.lora.r,,,,16
+model.lora.target_modules.gpt_neox,,,,"[""query_key_value"", ""dense""]"
+model.lora.target_modules.llama,,,,"[""q_proj"", ""k_proj"", ""v_proj"", ""o_proj""]"

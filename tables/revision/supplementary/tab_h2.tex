@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{H2: retrain-relative gap and relative advantage drop $(\mathrm{adv}_{pre}-\mathrm{adv}_{post})/\mathrm{adv}_{pre}$ across the GPT-2 series; slope of the gap per decade of parameters, fitted within each seed (mean and t-interval over seeds).}
-\label{tab:h2}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{3pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllccccccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllccccccc@{}}
+\caption{H2: retrain-relative gap and relative advantage drop $(\mathrm{adv}_{pre}-\mathrm{adv}_{post})/\mathrm{adv}_{pre}$ across the GPT-2 series; slope of the gap per decade of parameters, fitted within each seed (mean and t-interval over seeds).}\label{tab:h2}\\
 \toprule
 \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Gap DistilGPT-2} & \textbf{Gap GPT-2} & \textbf{Gap GPT-2-medium} & \textbf{Drop DistilGPT-2} & \textbf{Drop GPT-2} & \textbf{Drop GPT-2-medium} & \textbf{Slope} \\
 \midrule
+\endfirsthead
+\multicolumn{10}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Gap DistilGPT-2} & \textbf{Gap GPT-2} & \textbf{Gap GPT-2-medium} & \textbf{Drop DistilGPT-2} & \textbf{Drop GPT-2} & \textbf{Drop GPT-2-medium} & \textbf{Slope} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{10}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 GA$^{\dagger}$ & Loss thr. & primary & $0.03 \pm 0.03$ & $0.02 \pm 0.05$ & $0.07 \pm 0.04$ & $0.66 \pm 0.17$ & $0.72 \pm 0.30$ & $0.91 \pm 0.11$ & $0.072 \pm 0.065$ \\
 GA$^{\dagger}$ & Loss thr. & holdout10 & $0.11 \pm 0.11$ & $0.12 \pm 0.10$ & $0.14 \pm 0.12$ & $0.17 \pm 0.43$ & $0.44 \pm 0.42$ & $0.66 \pm 0.24$ & $0.038 \pm 0.291$ \\
 GA$^{\dagger}$ & Min-K\% & primary & $0.01 \pm 0.03$ & $0.02 \pm 0.04$ & $0.06 \pm 0.03$ & $0.65 \pm 0.27$ & $0.73 \pm 0.28$ & $0.88 \pm 0.08$ & $0.075 \pm 0.064$ \\
@@ -27,9 +35,6 @@ NPO & Min-K\% & primary & $-0.03 \pm 0.03$ & $-0.08 \pm 0.11$ & $-0.32 \pm 0.11$
 NPO & Min-K\% & holdout10 & $0.06 \pm 0.03$ & $-0.01 \pm 0.12$ & $-0.25 \pm 0.12$ & $0.82 \pm 0.25$ & $0.34 \pm 0.75$ & $-0.42 \pm 0.47$ & $-0.493 \pm 0.268$ \\
 NPO & Ref.-calib. & primary & $-0.05 \pm 0.01$ & $-0.10 \pm 0.11$ & $-0.36 \pm 0.12$ & $0.61 \pm 0.14$ & $0.50 \pm 0.41$ & $-0.04 \pm 0.26$ & $-0.499 \pm 0.234$ \\
 NPO & Ref.-calib. & holdout10 & $-0.06 \pm 0.04$ & $-0.11 \pm 0.14$ & $-0.46 \pm 0.13$ & $0.85 \pm 0.12$ & $0.80 \pm 0.23$ & $0.20 \pm 0.30$ & $-0.654 \pm 0.306$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: retain loss rose more than threefold in 5/5 seeds. GA: all three central models.\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. $^{\dagger}$Model collapsed: retain loss rose more than threefold in 5/5 seeds. GA: all three central models.\par
+}

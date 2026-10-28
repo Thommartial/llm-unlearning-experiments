@@ -1,14 +1,22 @@
-\begin{table*}[t]
-\centering
-\caption{TOFU forget quality (KS test against the retrained model of the same seed) and model utility.}
-\label{tab:tofu}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllccc@{}}
+\caption{TOFU forget quality (KS test against the retrained model of the same seed) and model utility.}\label{tab:tofu}\\
 \toprule
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Forget quality} & \textbf{Model utility} & \textbf{MU excl. 0} \\
 \midrule
+\endfirsthead
+\multicolumn{6}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Forget quality} & \textbf{Model utility} & \textbf{MU excl. 0} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 DistilGPT-2 & central & Retrain & $1.000 \pm 0.000$ & $0.020 \pm 0.055$ & $0.099$ \\
 DistilGPT-2 & central & GA$^{\dagger}$ & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
 DistilGPT-2 & central & GD & $0.085 \pm 0.064$ & $0.023 \pm 0.030$ & $0.028 \pm 0.038$ \\
@@ -43,9 +51,6 @@ Pythia-1B (LoRA) & central & Retrain & $1.000 \pm 0.000$ & $0.332 \pm 0.005$ & $
 Pythia-1B (LoRA) & central & GA$^{\dagger}$ & $0.000 \pm 0.000$ & $0.000 \pm 0.000$ & -- \\
 Pythia-1B (LoRA) & central & GD$^{\dagger}$ & $0.001 \pm 0.002$ & $0.006 \pm 0.015$ & $0.015 \pm 0.162$ \\
 Pythia-1B (LoRA) & central & NPO & $0.000 \pm 0.001$ & $0.106 \pm 0.069$ & $0.106 \pm 0.069$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Rows with model utility 0: 37 of 128. MU excl.\ 0: model utility without those rows (sensitivity check). Retrain rows with model utility 0 are not collapsed: one of the nine harmonic-mean components is 0, ROUGE on real authors (DistilGPT-2, central: 4/5 seeds; DistilGPT-2, iid\_K5: 5/5 seeds). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. Rows with model utility 0: 37 of 128. MU excl.\ 0: model utility without those rows (sensitivity check). Retrain rows with model utility 0 are not collapsed: one of the nine harmonic-mean components is 0, ROUGE on real authors (DistilGPT-2, central: 4/5 seeds; DistilGPT-2, iid\_K5: 5/5 seeds). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

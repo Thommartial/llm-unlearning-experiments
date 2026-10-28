@@ -1,18 +1,26 @@
-\begin{table*}[t]
-\centering
-\caption{Settings of each campaign, from the resolved configs.}
-\label{tab:hyperparameters}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllll@{}}
+\begin{longtable}{@{\extracolsep{\fill}}lllll@{}}
+\caption{Settings of each campaign, from the resolved configs.}\label{tab:hyperparameters}\\
 \toprule
 \textbf{Setting} & \textbf{central} & \textbf{fed\_ext} & \textbf{fed\_iid} & \textbf{lora} \\
 \midrule
+\endfirsthead
+\multicolumn{5}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+\textbf{Setting} & \textbf{central} & \textbf{fed\_ext} & \textbf{fed\_iid} & \textbf{lora} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 models & distilgpt2, gpt2, gpt2-medium & gpt2 & distilgpt2, gpt2, gpt2-medium & EleutherAI/pythia-1b \\
 seeds & 0, 1, 2, 3, 4 & 0, 1, 2 & 0, 1, 2, 3, 4 & 0, 1, 2, 3, 4 \\
 model.precision & "fp16\_amp" & "fp16\_amp" & "fp16\_amp" & "fp16\_amp" \\
-model.lora & null & null & null & {"alpha": 32, "base\_dtype": "float16", "dropout": 0.05, "gradient\_checkpointing": true, "r": 16, "target\_modules": {"gpt\_neox": ["query\_key\_value", "dense"], "llama": ["q\_proj", "k\_proj", "v\_proj", "o\_proj"]}} \\
+model.lora & null & null & null & -- \\
 data.max\_length & 128 & 128 & 128 & 128 \\
 data.max\_samples & null & null & null & null \\
 data.outlier\_fraction & 0.3 & 0.3 & 0.3 & 0.3 \\
@@ -34,6 +42,12 @@ federated.local\_epochs & -- & 1 & 1 & -- \\
 federated.client\_unlearn\_epochs & -- & 2 & 2 & -- \\
 federated.rho\_factor & -- & 2.0 & 2.0 & -- \\
 federated.recovery\_rounds & -- & 2 & 2 & -- \\
-\bottomrule
-\end{tabular*}
-\end{table*}
+model.lora.alpha & -- & -- & -- & 32 \\
+model.lora.base\_dtype & -- & -- & -- & "float16" \\
+model.lora.dropout & -- & -- & -- & 0.05 \\
+model.lora.gradient\_checkpointing & -- & -- & -- & true \\
+model.lora.r & -- & -- & -- & 16 \\
+model.lora.target\_modules.gpt\_neox & -- & -- & -- & ["query\_key\_value", "dense"] \\
+model.lora.target\_modules.llama & -- & -- & -- & ["q\_proj", "k\_proj", "v\_proj", "o\_proj"] \\
+\end{longtable}
+}

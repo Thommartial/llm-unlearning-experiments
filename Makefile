@@ -49,6 +49,13 @@ revision-micro:  ## Revision path on real TOFU, CPU: DistilGPT-2, 4 x 50 records
 revision-figures:  ## Revision analysis (CPU): tables/revision/ and figures/revision/ from results/revision/
 > python scripts/analyze_revision.py --results results/revision --figures figures/revision --tables tables/revision
 
+revision-supplementary:  ## Supplementary PDF of every full revision table (tables/revision/supplementary.pdf)
+> cd tables/revision && for i in 1 2 3; do \
+>   pdflatex -interaction=nonstopmode -halt-on-error supplementary.tex > /dev/null || { grep -A3 "^!" supplementary.log; exit 1; }; \
+> done
+> @! grep -n "Overfull\|Rerun to get" tables/revision/supplementary.log
+> @echo "wrote tables/revision/supplementary.pdf"
+
 lint:  ## Lint
 > ruff check src scripts tests
 
@@ -59,4 +66,4 @@ clean:  ## Remove caches and generated artifacts
 > rm -rf .pytest_cache .ruff_cache **/__pycache__ results/* && touch results/.gitkeep
 
 .PHONY: help env torch-gpu install verify smoke smoke-local experiment sweep figures fed-figures revision-smoke \
-        revision-micro revision-figures lint test clean
+        revision-micro revision-figures revision-supplementary lint test clean

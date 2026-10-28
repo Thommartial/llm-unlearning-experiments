@@ -452,3 +452,9 @@ def test_gitignore_keeps_only_the_merged_results():
     def ignored(f):
         return subprocess.run(["git", "check-ignore", "-q", "--no-index", f"results/revision/{f}"]).returncode == 0
     assert not any(ignored(f) for f in kept) and all(ignored(f) for f in dropped)
+
+    def ignored_table(f):
+        return subprocess.run(["git", "check-ignore", "-q", "--no-index", f"tables/revision/{f}"]).returncode == 0
+    # the supplementary PDF and its sources are tracked; the LaTeX build files are not
+    assert not any(ignored_table(f) for f in ("supplementary.pdf", "supplementary.tex", "supplementary/tab_h1.tex"))
+    assert all(ignored_table(f) for f in ("supplementary.aux", "supplementary.log"))

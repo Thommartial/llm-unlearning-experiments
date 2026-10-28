@@ -1,16 +1,26 @@
-\begin{table*}[t]
-\centering
-\caption{H4/H5: update-signal attacks. Score change (black-box, pre $-$ post) and gradient alignment with $\Delta\theta$ (white-box), and their gaps to retrain (same seed).}
-\label{tab:update}
-\footnotesize
+{\footnotesize
 \renewcommand{\arraystretch}{1.2}
 \setlength{\tabcolsep}{3pt}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllllcccc@{}}
+\begin{longtable}{@{\extracolsep{\fill}}llllllcccc@{}}
+\caption{H4/H5: update-signal attacks. Score change (black-box, pre $-$ post) and gradient alignment with $\Delta\theta$ (white-box), and their gaps to retrain (same seed).}\label{tab:update}\\
 \toprule
  & & & & & & \multicolumn{2}{c}{\textbf{Score change}} & \multicolumn{2}{c}{\textbf{Grad. alignment}} \\
 \cmidrule(lr){7-8}\cmidrule(lr){9-10}
 \textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{View} & \textbf{Attack} & \textbf{NM} & \textbf{AUC} & \textbf{Gap} & \textbf{AUC} & \textbf{Gap} \\
 \midrule
+\endfirsthead
+\multicolumn{10}{@{}l}{\itshape Table~\thetable{} (continued)}\\
+\toprule
+ & & & & & & \multicolumn{2}{c}{\textbf{Score change}} & \multicolumn{2}{c}{\textbf{Grad. alignment}} \\
+\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{View} & \textbf{Attack} & \textbf{NM} & \textbf{AUC} & \textbf{Gap} & \textbf{AUC} & \textbf{Gap} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{10}{r@{}}{\itshape continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
 DistilGPT-2 & central & Retrain & release & Loss thr. & primary & $0.99 \pm 0.01$ & $0.00 \pm 0.00$ & $0.98 \pm 0.01$ & $0.00 \pm 0.00$ \\
 DistilGPT-2 & central & Retrain & release & Loss thr. & holdout10 & $0.99 \pm 0.01$ & $0.00 \pm 0.00$ & $0.98 \pm 0.01$ & $0.00 \pm 0.00$ \\
 DistilGPT-2 & central & Retrain & release & Min-K\% & primary & $0.98 \pm 0.01$ & $0.00 \pm 0.00$ & $0.98 \pm 0.01$ & $0.00 \pm 0.00$ \\
@@ -147,9 +157,6 @@ Pythia-1B (LoRA) & central & NPO & release & Loss thr. & primary & $0.97 \pm 0.0
 Pythia-1B (LoRA) & central & NPO & release & Loss thr. & holdout10 & $0.94 \pm 0.05$ & $-0.04 \pm 0.05$ & $0.65 \pm 0.04$ & $-0.32 \pm 0.05$ \\
 Pythia-1B (LoRA) & central & NPO & release & Min-K\% & primary & $0.97 \pm 0.03$ & $0.00 \pm 0.03$ & $0.71 \pm 0.04$ & $-0.27 \pm 0.04$ \\
 Pythia-1B (LoRA) & central & NPO & release & Min-K\% & holdout10 & $0.94 \pm 0.04$ & $-0.03 \pm 0.05$ & $0.65 \pm 0.04$ & $-0.32 \pm 0.05$ \\
-\bottomrule
-\end{tabular*}
-
-\smallskip
-{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. NM: non-member set. View: who observes the change from $\theta_{pre}$ (release: the two model versions; $^{*}$the server, and all clients at the first recovery broadcast). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par}
-\end{table*}
+\end{longtable}
+Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. NM: non-member set. View: who observes the change from $\theta_{pre}$ (release: the two model versions; $^{*}$the server, and all clients at the first recovery broadcast). $^{\dagger}$Model collapsed: retain loss rose more than threefold in every seed. GA: all four central models; GD: Pythia-1B (LoRA); client-GA upload: all six federated runs (intermediate model before recovery; the released global model is not collapsed).\par
+}

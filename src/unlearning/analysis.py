@@ -45,6 +45,34 @@ NOTE_METHOD_NAMES = {"client_ga_upload": "client-GA upload", "client_ga": "clien
 NUMBER_WORDS = {3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
 MU_SPLITS = {"retain": "retain", "real_authors": "real authors", "world_facts": "world facts"}
 MU_METRICS = {"prob": "probability", "rouge": "ROUGE", "truth_ratio": "truth ratio"}
+SUPPLEMENT_SECTIONS = [  # after the central/federated tables; full tables only, no paper versions
+    ("Hypotheses", ["tab_h1.tex", "tab_h1_two_sided.tex", "tab_h2.tex", "tab_h3.tex", "tab_h3_ablation.tex"]),
+    ("Low false-positive rates, version-change attacks and control",
+     ["tab_low_fpr.tex", "tab_update.tex", "tab_control.tex"]),
+    ("Costs, TOFU metrics and settings",
+     ["tab_costs.tex", "tab_tofu.tex", "tab_hyperparameters.tex", "tab_pilot_slowdown.tex"])]
+MAIN_TEXT_REFS = {"tab:h1-paper": "the H1 table in the main text",
+                  "tab:h1-two-sided-paper": "the two-sided table in the main text"}
+CITATIONS = {"shi2024muse": "Shi et al. (ICLR 2025)"}
+SUPPLEMENT_PREAMBLE = r"""\documentclass[10pt]{article}
+\usepackage[letterpaper,landscape,margin=0.65in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\LTcapwidth}{\textwidth}
+\renewcommand{\thetable}{S\arabic{table}}
+\title{Supplementary tables}
+\date{}
+\begin{document}
+\maketitle
+Every table is written by \texttt{scripts/analyze\_revision.py} from the campaign results in
+\texttt{results/revision}. Cells give the mean and the half-width of the 95\% $t$-interval over seeds;
+differences are paired by seed. Tables in the main text select the loss-threshold attack and the
+primary non-members from these.
+
+"""
 PAPER_SCOPE = ("loss_threshold", "primary")  # attack and non-member set of the paper's H1 tables
 PILOT_CSVS = ("pilot.csv", "pilot_lora.csv")  # timing rows of the pilot and the LoRA pilot, not campaigns
 
@@ -449,9 +477,17 @@ def mu_zero_components(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out, columns=["model", "variant", "method", "metric", "split", "zero", "rows"])
 
 
+def _flatten(name: str, value) -> dict:
+    """{dotted name: JSON value}, one entry per key of nested dicts."""
+    if isinstance(value, dict) and value:
+        return {k: v for sub, val in sorted(value.items()) for k, v in _flatten(f"{name}.{sub}", val).items()}
+    return {name: json.dumps(value, sort_keys=True)}
+
+
 def hyperparameters(configs: list[tuple[str, str, dict]], kinds: dict) -> pd.DataFrame:
     """Settings of each campaign from the resolved configs; a setting that
-    differs between the units of a campaign lists its values."""
+    differs between the units of a campaign lists its values. Dict settings
+    (model.lora) get one row per key."""
     keys = [("model", "precision"), ("model", "lora"), ("data", "max_length"), ("data", "max_samples"),
             ("data", "outlier_fraction"), ("data", "max_new_tokens"), ("unlearn", "finetune_epochs"),
             ("unlearn", "finetune_lr"), ("unlearn", "train_batch_size"), ("unlearn", "epochs"),
@@ -468,8 +504,9 @@ def hyperparameters(configs: list[tuple[str, str, dict]], kinds: dict) -> pd.Dat
         col = {"models": ", ".join(_order({c["model"]["name"] for c in cfgs}, MODEL_ORDER)),
                "seeds": ", ".join(str(s) for s in sorted({c["seed"] for c in cfgs}))}
         for section, key in keys + (fed if kinds.get(campaign) == "federated" else []):
-            vals = {json.dumps(c[section][key], sort_keys=True) for c in cfgs}
-            col[f"{section}.{key}"] = " / ".join(sorted(vals))
+            flat = [_flatten(f"{section}.{key}", c[section][key]) for c in cfgs]
+            for name in dict.fromkeys(k for f in flat for k in f):
+                col[name] = " / ".join(sorted({f.get(name, "null") for f in flat}))
         out[campaign] = col
     return pd.DataFrame(out)
 
@@ -507,6 +544,58 @@ def latex_table(path, caption: str, label: str, header: list[str], rows: list[li
     lines.append(f"\\end{{{env}}}")
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("\n".join(lines) + "\n")
+
+
+def latex_longtable(path, caption: str, label: str, header: list[str], rows: list[list[str]], note: str = "",
+                    align: str | None = None, **_) -> None:
+    """The same table as a full-width longtable that breaks across pages (for
+    the supplementary document); the header repeats on each page."""
+    align = align or "l" + "c" * (len(rows[0]) - 1 if rows else 1)
+    sep = 5 if len(align) <= 8 else 3 if len(align) <= 10 else 2
+    n = len(align)
+    head = ["\\toprule", *[h if h.startswith("\\cmidrule") else h + " \\\\" for h in header], "\\midrule"]
+    lines = ["{\\footnotesize", "\\renewcommand{\\arraystretch}{1.2}", f"\\setlength{{\\tabcolsep}}{{{sep}pt}}",
+             f"\\begin{{longtable}}{{@{{\\extracolsep{{\\fill}}}}{align}@{{}}}}",
+             f"\\caption{{{caption}}}\\label{{{label}}}\\\\", *head, "\\endfirsthead",
+             f"\\multicolumn{{{n}}}{{@{{}}l}}{{\\itshape Table~\\thetable{{}} (continued)}}\\\\", *head, "\\endhead",
+             "\\midrule", f"\\multicolumn{{{n}}}{{r@{{}}}}{{\\itshape continued on the next page}}\\\\", "\\endfoot",
+             "\\bottomrule", "\\endlastfoot", *[" & ".join(r) + " \\\\" for r in rows], "\\end{longtable}"]
+    if note:
+        lines += [f"{note}\\par"]
+    lines.append("}")
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text("\n".join(lines) + "\n")
+
+
+def _supplementary_text(text: str, labels: set[str]) -> str:
+    """References to tables outside the supplementary document as plain text;
+    citations as author and venue."""
+    import re
+
+    def ref(m):
+        return m[0] if m[1] in labels else MAIN_TEXT_REFS.get(m[1], "a table in the main text")
+
+    def cite(m):
+        if m[1] not in CITATIONS:
+            raise ValueError(f"no plain-text citation for {m[1]}")
+        return f" from {CITATIONS[m[1]]}"
+    text = re.sub(r"Table~\\ref\{([^}]*)\}", ref, text)
+    return re.sub(r"~?\\cite\{([^}]*)\}", cite, text)
+
+
+def write_supplementary(out, names: list[str]) -> Path:
+    """supplementary.tex: every full table as a longtable (from supplementary/),
+    grouped by section; built with `make revision-supplementary`."""
+    sections = [("Membership inference per attack and non-member set",
+                 [n for n in names if n.startswith(("tab_central_", "tab_federated_"))])]
+    sections += [(title, [n for n in group if n in names]) for title, group in SUPPLEMENT_SECTIONS]
+    body = []
+    for title, group in sections:
+        if group:
+            body += [f"\\section{{{title}}}", *[f"\\input{{supplementary/{n[:-4]}}}" for n in group], ""]
+    path = Path(out) / "supplementary.tex"
+    path.write_text(SUPPLEMENT_PREAMBLE + "\n".join(body) + "\\end{document}\n")
+    return path
 
 
 def _b(text: str) -> str:
@@ -577,7 +666,9 @@ def _retrain_mu_note(comp: pd.DataFrame) -> str:
 
 
 def write_tables(a: dict, out) -> list[Path]:
-    """Every LaTeX table; returns the paths written."""
+    """Every LaTeX table: the `*_paper.tex` tables (two-column table*) and the
+    full tables as longtables in supplementary/ with supplementary.tex; returns
+    the table paths written."""
     out = Path(out)
     df = a["rows"]
     written = []
@@ -594,17 +685,20 @@ def write_tables(a: dict, out) -> list[Path]:
         seen.setdefault(method, set()).update(runs)
         return METHOD_NAMES.get(method, _tex(method)) + (COLLAPSED_MARK if hit else "")
 
-    def save(name, *args, **kw):
+    long = {}  # supplementary name -> the table's arguments
+
+    def save(name, caption, label, header, rows, note="", **kw):
+        """`*_paper.tex`: a two-column table* for the main text; every other (full)
+        table: a longtable in supplementary/ only."""
         if marked:
-            extra = _collapse_note(marked, seen, kinds, flags)
-            if len(args) > 4:
-                args = (*args[:4], f"{args[4]} {extra}".strip(), *args[5:])
-            else:
-                kw["note"] = f"{kw.get('note', '')} {extra}".strip()
+            note = f"{note} {_collapse_note(marked, seen, kinds, flags)}".strip()
         marked.clear()
         seen.clear()
-        latex_table(out / name, *args, **kw)
-        written.append(out / name)
+        if name.endswith("_paper.tex"):
+            latex_table(out / name, caption, label, header, rows, note, **kw)
+            written.append(out / name)
+        else:
+            long[name] = (caption, label, header, rows, note, kw)
 
     n_seeds = df.groupby(KEY)["seed"].nunique().max() if len(df) else 0
     ci_note = (f"Mean~$\\pm$~half-width of the 95\\% $t$-interval over seeds (up to {n_seeds}); "
@@ -833,6 +927,12 @@ def write_tables(a: dict, out) -> list[Path]:
              "process on the other GPU (campaign).", "tab:pilot-slowdown",
              [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Phase", "Alone (s)", "Campaign (s)", "Ratio",
                                          "Same GPU"))], rows, align="llll" + "c" * 4)
+    labels = {args[1] for args in long.values()}
+    for name, (caption, label, header, rows, note, kw) in long.items():
+        latex_longtable(out / "supplementary" / name, _supplementary_text(caption, labels), label, header, rows,
+                        _supplementary_text(note, labels), **kw)
+        written.append(out / "supplementary" / name)
+    write_supplementary(out, list(long))
     return written
 
 
