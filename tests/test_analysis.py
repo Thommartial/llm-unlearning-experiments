@@ -122,7 +122,7 @@ def test_h1_h2_h3(results):
     h1 = analysis.h1(df)
     r = h1[(h1["model"] == "gpt2") & (h1["kind"] == "central") & (h1["attack"] == "loss_threshold")].iloc[0]
     want = [0.05 + 0.001 * s for s in SEEDS]
-    assert r["method"] == "npo" and r["mean"] == pytest.approx(np.mean(want)) and r["excludes_zero"]
+    assert r["method"] == "npo" and r["mean"] == pytest.approx(np.mean(want)) and r["verdict"] == "above retrain"
     assert r["half"] == pytest.approx(analysis.t_ci(want)["half"])
     h2 = analysis.h2(df)
     r = h2[(h2["attack"] == "loss_threshold")].iloc[0]
@@ -135,6 +135,21 @@ def test_h1_h2_h3(results):
     r = h3[(h3["model"] == "gpt2") & (h3["definition"] == "basediff") & (h3["attack"] == "loss_threshold")].iloc[0]
     assert r["mean"] == pytest.approx(np.mean([0.05 + 0.002 * s for s in SEEDS])) and r["role"] == "primary"
     assert r["adv_outlier"] == 0.2 and set(h3["definition"]) == {"basediff"}  # only the columns present
+    assert r["verdict"] == "outliers higher" and "excludes_zero" not in h1 and "excludes_zero" not in h3
+
+
+def test_verdicts_read_the_ci_in_both_directions():
+    v = analysis._verdict
+    assert v(analysis.t_ci([0.1, 0.12, 0.11]), "above retrain", "below retrain") == "above retrain"
+    assert v(analysis.t_ci([-0.3, -0.35, -0.4]), "above retrain", "below retrain") == "below retrain"
+    assert v(analysis.t_ci([-0.1, 0.1, 0.05]), "above retrain", "below retrain") == "inconclusive"
+    assert v(analysis.t_ci([0.2]), "above retrain", "below retrain") is None  # one seed: no CI
+    rows = [_row(model="gpt2", seed=s, method=m, gap_post=g, gap_post_outlier_basediff=g - 0.1 - 0.01 * s,
+                 gap_post_typical_basediff=g, adv_post_outlier_basediff=0.1, adv_post_typical_basediff=0.1)
+            for s in SEEDS for m, g in (("retrain", 0.0), ("npo", -0.3 - 0.01 * s))]
+    df = analysis._prepare(pd.DataFrame(rows))
+    assert analysis.h1(df)["verdict"].tolist() == ["below retrain"]  # contradicts H1
+    assert analysis.h3(df)["verdict"].tolist() == ["typical higher"]
 
 
 def test_h1_two_sided_distance_per_seed():
@@ -164,7 +179,7 @@ def test_h1_two_sided_distance_per_seed():
     assert fed["mean"] == pytest.approx(0.16) and fed["n_below_retrain"] == 2 and np.isnan(fed["forget_quality_mean"])
     h1 = analysis.h1(df)  # the pre-registered one-sided H1 is unchanged: signed mean, CI includes 0
     r = h1[h1["kind"] == "central"].iloc[0]
-    assert r["mean"] == pytest.approx(np.mean(gaps)) and not r["excludes_zero"]
+    assert r["mean"] == pytest.approx(np.mean(gaps)) and r["verdict"] == "inconclusive"
 
 
 def test_h2_slope_is_fitted_within_each_seed():
@@ -283,7 +298,17 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     assert set(two["kind"]) == {"central", "federated"} and (two["mean"] >= 0).all()
     tex = (tmp_path / "tab" / "tab_h1_two_sided.tex").read_text()
     assert "Exploratory (post hoc)" in tex and "\\label{tab:h1-two-sided}" in tex and "Forget quality" in tex
-    assert "tab_h1_two_sided.tex" in names
+    assert {"tab_h1_two_sided.tex", "tab_h1_paper.tex", "tab_h1_two_sided_paper.tex"} <= names
+    full, paper = ((tmp_path / "tab" / f"tab_h1{s}.tex").read_text() for s in ("", "_paper"))
+    assert "\\textbf{Verdict}" in full and "above retrain" in full and "CI excludes" not in full
+    assert "Ref.-calib." in full and "Ref.-calib." not in paper and "Non-members" not in paper
+    assert "\\label{tab:h1-paper}" in paper and "Table~\\ref{tab:h1} (appendix)" in paper
+    # rows: 3 central models (2 attacks in the full table) + 2 federated runs x 2 stages; plus the note
+    assert paper.count("above retrain") == 3 + 4 + 1 and full.count("above retrain") == 6 + 4 + 1
+    two = (tmp_path / "tab" / "tab_h1_two_sided_paper.tex").read_text()
+    assert "Exploratory (post hoc)" in two and "\\ref{tab:h1-paper}" in two and "Ref.-calib." not in two
+    h3 = (tmp_path / "tab" / "tab_h3.tex").read_text()
+    assert "outliers higher" in h3 and "CI excl." not in h3
 
 
 def test_end_to_end_on_a_smoke_campaign(tmp_path):

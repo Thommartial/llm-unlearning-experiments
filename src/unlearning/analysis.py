@@ -38,6 +38,7 @@ VIEW_NAMES = {"central": "release", "any_client": "any client",
               "server, and all clients at the first recovery broadcast": "server$^{*}$"}
 DEFINITIONS = {"basediff": "primary", "rarity": "secondary", "legacy": "ablation", "legacy_pooled": "ablation"}
 KEY = ["campaign", "kind", "model", "variant"]
+PAPER_SCOPE = ("loss_threshold", "primary")  # attack and non-member set of the paper's H1 tables
 PILOT_CSVS = ("pilot.csv", "pilot_lora.csv")  # timing rows of the pilot and the LoRA pilot, not campaigns
 
 
@@ -116,15 +117,25 @@ def _excludes_zero(s: dict) -> bool | None:
     return bool(s["lo"] > 0 or s["hi"] < 0)
 
 
+def _verdict(s: dict, above: str, below: str) -> str | None:
+    """Three-way reading of a paired CI: `above` (lower bound > 0), `below`
+    (upper bound < 0) or "inconclusive"; None without a CI (one seed)."""
+    if not np.isfinite(s["half"]):
+        return None
+    return above if s["lo"] > 0 else below if s["hi"] < 0 else "inconclusive"
+
+
 def h1(df: pd.DataFrame) -> pd.DataFrame:
     """H1: post-unlearning AUC minus the retrained model's (same seed), per
-    method, attack and non-member set; mean, CI and whether it excludes 0."""
+    method, attack and non-member set; mean, CI and the verdict: "above retrain"
+    (lower bound > 0, supports H1), "below retrain" (upper bound < 0,
+    contradicts H1) or "inconclusive"."""
     out = []
     d = df[df["method"] != "retrain"]
     for keys, g in d.groupby(KEY + ["method", "attack", "nonmember"], sort=False):
         s = t_ci(g["gap_post"])
         out.append({**dict(zip(KEY + ["method", "attack", "nonmember"], keys, strict=True)), **s,
-                    "excludes_zero": _excludes_zero(s)})
+                    "verdict": _verdict(s, "above retrain", "below retrain")})
     return pd.DataFrame(out)
 
 
@@ -198,7 +209,7 @@ def h3(df: pd.DataFrame) -> pd.DataFrame:
                 continue
             s = t_ci(g[o] - g[t])
             out.append({**dict(zip(KEY + ["method", "attack", "nonmember"], keys, strict=True)), "definition": defn,
-                        "role": role, **s, "excludes_zero": _excludes_zero(s),
+                        "role": role, **s, "verdict": _verdict(s, "outliers higher", "typical higher"),
                         "gap_outlier": t_ci(g[o])["mean"], "gap_typical": t_ci(g[t])["mean"],
                         "adv_outlier": t_ci(g[f"adv_post_outlier_{defn}"])["mean"],
                         "adv_typical": t_ci(g[f"adv_post_typical_{defn}"])["mean"]})
@@ -455,6 +466,13 @@ def _b(text: str) -> str:
     return f"\\textbf{{{text}}}"
 
 
+def _scoped(h: pd.DataFrame, scope: tuple[str, str] | None) -> pd.DataFrame:
+    """Rows of one (attack, non-member set), or all rows for scope None."""
+    if scope is None or h.empty:
+        return h
+    return h[(h["attack"] == scope[0]) & (h["nonmember"] == scope[1])]
+
+
 def _model(m: str) -> str:
     return _tex(MODEL_NAMES.get(m, m))
 
@@ -523,32 +541,45 @@ def write_tables(a: dict, out) -> list[Path]:
                      "(same seed); advantage is $|\\mathrm{AUC}-0.5|$; outliers by base-model difficulty, "
                      "stratum-matched.", f"tab:{kind}-{attack.replace('_', '-')}-{nm}", [top, rule, head],
                      rows, ci_note)
-    if not a["h1"].empty:
-        rows = [[_model(r.model), _tex(r.variant), METHOD_NAMES.get(r.method, r.method), ATTACK_NAMES[r.attack],
-                 _tex(r.nonmember), _fmt(r.mean, r.half, 3), {True: "yes", False: "no"}.get(r.excludes_zero, "--")]
-                for r in a["h1"].itertuples()]
-        save("tab_h1.tex", "H1: post-unlearning AUC minus the retrained model's AUC, paired by seed.", "tab:h1",
-             [" & ".join(_b(h) for h in ("Model", "Run", "Method", "Attack", "Non-members", "Gap",
-                                         "CI excludes 0"))], rows, ci_note, align="llllccc")
-    if not a["h1_two_sided"].empty:
-        h = a["h1_two_sided"]
-        rows = []
-        for keys, g in h.groupby(KEY + ["method", "attack", "nonmember"], sort=False):
-            cell = {r["stratum"]: r for r in g.to_dict("records")}
-            dist = [_fmt(cell[s]["mean"], cell[s]["half"], 3) if s in cell else "--"
-                    for s in ("all", "typical_basediff", "outlier_basediff")]
-            r = cell["all"]
-            rows.append([_model(keys[2]), _tex(keys[3]), METHOD_NAMES.get(keys[4], keys[4]), ATTACK_NAMES[keys[5]],
-                         _tex(keys[6]), *dist, f"{r['n_below_retrain']}/{r['n']}",
-                         _fmt(r["forget_quality_mean"], r["forget_quality_half"], 3)])
-        save("tab_h1_two_sided.tex", "Exploratory (post hoc): two-sided distance $|\\mathrm{AUC}-"
-             "\\mathrm{AUC}_{\\mathrm{retrain}}|$ to the retrained model of the same seed (federated: the "
-             "federated retrain), overall and per stratum, next to TOFU forget quality. Added after seeing the "
-             "GPT-2 results; H1 (Table~\\ref{tab:h1}) is the pre-registered one-sided test.", "tab:h1-two-sided",
-             [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Attack", "Non-members", "All", "Typical",
-                                         "Outlier", "Below", "Forget quality"))], rows,
-             ci_note + " Strata by base-model difficulty, stratum-matched. Below: seeds whose AUC is under the "
-             "retrained model's.", align="lllll" + "c" * 5)
+    verdict_note = (" Verdict: above retrain (CI lower bound $>0$, supports H1), below retrain (CI upper bound "
+                    "$<0$, contradicts H1) or inconclusive.")
+    for paper in (False, True):  # full tables for the appendix; paper tables: loss threshold, primary only
+        sfx, scope = ("_paper", PAPER_SCOPE) if paper else ("", None)
+
+        def where(full_label, paper=paper):
+            return (" Loss-threshold attack, primary non-members; every attack and non-member set in "
+                    f"Table~\\ref{{{full_label}}} (appendix)." if paper else "")
+        lead = ("Model", "Run", "Method") + (() if paper else ("Attack", "Non-members"))
+
+        def head(r, paper=paper):
+            cells = [_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["method"], r["method"])]
+            return cells if paper else cells + [ATTACK_NAMES[r["attack"]], _tex(r["nonmember"])]
+        h = _scoped(a["h1"], scope)
+        if not h.empty:
+            rows = [head(r) + [_fmt(r["mean"], r["half"], 3), r["verdict"] if isinstance(r["verdict"], str)
+                               else "--"] for r in h.to_dict("records")]
+            save(f"tab_h1{sfx}.tex", "H1: post-unlearning AUC minus the retrained model's AUC, paired by seed."
+                 + where("tab:h1"), f"tab:h1{sfx.replace('_', '-')}",
+                 [" & ".join(_b(x) for x in lead + ("Gap", "Verdict"))], rows, ci_note + verdict_note,
+                 align="l" * len(lead) + "cc")
+        h = _scoped(a["h1_two_sided"], scope)
+        if not h.empty:
+            rows = []
+            for _, g in h.groupby(KEY + ["method", "attack", "nonmember"], sort=False):
+                cell = {r["stratum"]: r for r in g.to_dict("records")}
+                dist = [_fmt(cell[s]["mean"], cell[s]["half"], 3) if s in cell else "--"
+                        for s in ("all", "typical_basediff", "outlier_basediff")]
+                r = cell["all"]
+                rows.append(head(r) + [*dist, f"{r['n_below_retrain']}/{r['n']}",
+                                       _fmt(r["forget_quality_mean"], r["forget_quality_half"], 3)])
+            save(f"tab_h1_two_sided{sfx}.tex", "Exploratory (post hoc): two-sided distance $|\\mathrm{AUC}-"
+                 "\\mathrm{AUC}_{\\mathrm{retrain}}|$ to the retrained model of the same seed (federated: the "
+                 "federated retrain), overall and per stratum, next to TOFU forget quality. Added after seeing "
+                 f"the GPT-2 results; H1 (Table~\\ref{{tab:h1{sfx.replace('_', '-')}}}) is the pre-registered "
+                 "one-sided test." + where("tab:h1-two-sided"), f"tab:h1-two-sided{sfx.replace('_', '-')}",
+                 [" & ".join(_b(x) for x in lead + ("All", "Typical", "Outlier", "Below", "Forget quality"))],
+                 rows, ci_note + " Strata by base-model difficulty, stratum-matched. Below: seeds whose AUC is "
+                 "under the retrained model's.", align="l" * len(lead) + "c" * 5)
     if not a["h2"].empty:
         models = [m for m in GPT2_PARAMS if f"{m}__gap_post" in a["h2"]]
         rows = []
@@ -571,13 +602,14 @@ def write_tables(a: dict, out) -> list[Path]:
             continue
         rows = [[_model(r.model), METHOD_NAMES.get(r.method, r.method), ATTACK_NAMES[r.attack], _tex(r.nonmember),
                  _tex(r.definition), _fmt(r.gap_outlier), _fmt(r.gap_typical), _fmt(r.mean, r.half, 3),
-                 {True: "yes", False: "no"}.get(r.excludes_zero, "--"), _fmt(r.adv_outlier), _fmt(r.adv_typical)]
+                 r.verdict if isinstance(r.verdict, str) else "--", _fmt(r.adv_outlier), _fmt(r.adv_typical)]
                 for r in h.itertuples()]
         save(name, f"{title}: retrain-relative gap of outliers minus typical records, paired by seed.",
              "tab:" + name[4:-4].replace("_", "-"),
              [" & ".join(_b(x) for x in ("Model", "Method", "Attack", "Non-members", "Definition", "Gap out.",
-                                         "Gap typ.", "Difference", "CI excl. 0", "Adv. out.", "Adv. typ."))],
-             rows, ci_note, align="lllll" + "c" * 6)
+                                         "Gap typ.", "Difference", "Verdict", "Adv. out.", "Adv. typ."))],
+             rows, ci_note + " Verdict: outliers higher (CI lower bound $>0$), typical higher (CI upper bound "
+             "$<0$) or inconclusive.", align="lllll" + "c" * 6)
     lf = a["low_fpr"]
     if not lf.empty:
         lf = lf[lf["stage"].str.startswith("post_") & (lf["attack"] != "ref_calibrated")]
