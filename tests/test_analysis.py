@@ -126,15 +126,34 @@ def test_h1_h2_h3(results):
     assert r["half"] == pytest.approx(analysis.t_ci(want)["half"])
     h2 = analysis.h2(df)
     r = h2[(h2["attack"] == "loss_threshold")].iloc[0]
-    x = np.repeat(np.log10([82e6, 124e6, 355e6]), 5)
-    y = np.array([0.02 + 0.03 * i + 0.001 * s for i in range(3) for s in SEEDS])
-    assert r["slope"] == pytest.approx(stats.linregress(x, y).slope) and r["slope_lo"] > 0
+    x = np.log10([82e6, 124e6, 355e6])  # one fit per seed; here every seed has the same slope
+    assert r["slope"] == pytest.approx(stats.linregress(x, [0.02, 0.05, 0.08]).slope) and r["n_seeds"] == 5
+    assert r["slope_half"] == pytest.approx(0, abs=1e-12) and r["slope_lo"] > 0
     assert r["gpt2-medium__gap_post"] == pytest.approx(0.08 + 0.002)
     assert r["gpt2__rel_drop"] == pytest.approx(np.mean([(0.3 - (0.1 + 0.001 * s)) / 0.3 for s in SEEDS]))
     h3 = analysis.h3(df)
     r = h3[(h3["model"] == "gpt2") & (h3["definition"] == "basediff") & (h3["attack"] == "loss_threshold")].iloc[0]
     assert r["mean"] == pytest.approx(np.mean([0.05 + 0.002 * s for s in SEEDS])) and r["role"] == "primary"
     assert r["adv_outlier"] == 0.2 and set(h3["definition"]) == {"basediff"}  # only the columns present
+
+
+def test_h2_slope_is_fitted_within_each_seed():
+    x = np.log10([82e6, 124e6, 355e6])
+    rows, want = [], []
+    for seed, b in enumerate([0.01, 0.03, 0.02, 0.05]):
+        models = MODELS if seed != 3 else MODELS[1:]  # a seed with two models still gives a slope
+        for model in models:
+            gap = 0.01 * seed + b * x[MODELS.index(model)]
+            rows.append(_row(model=model, seed=seed, method="npo", gap_post=gap, adv_post=0.1 + gap))
+        want.append(b)  # the exact per-seed slope
+    rows.append(_row(model="gpt2", seed=4, method="npo", gap_post=0.05, adv_post=0.15))  # one model: no slope
+    r = analysis.h2(analysis._prepare(pd.DataFrame(rows))).iloc[0]
+    s = analysis.t_ci(want)
+    assert r["n_seeds"] == 4 and r["slope"] == pytest.approx(np.mean(want))
+    assert r["slope_half"] == pytest.approx(stats.t.ppf(0.975, 3) * np.std(want, ddof=1) / 2)  # df = seeds - 1
+    assert (r["slope_lo"], r["slope_hi"]) == pytest.approx((s["lo"], s["hi"]))
+    assert r["gpt2__gap_post"] == pytest.approx(np.mean([0.01 * k + b * x[1] for k, b in
+                                                         enumerate([0.01, 0.03, 0.02, 0.05])] + [0.05]))
 
 
 def test_pooled_low_fpr(results):
@@ -150,6 +169,14 @@ def test_pooled_low_fpr(results):
     assert r["tpr_at_1_outlier_basediff"] == tpr_at_fpr(f[tf], h[th], 0.01)
     assert r["tpr_at_1_typical_basediff"] == tpr_at_fpr(f[~tf], h[~th], 0.01)
     assert lf[lf["attack"] == "min_k_prob"].empty  # not in the files
+    # per seed: 40 non-members, so 0.1% FPR allows no false positive (TPR at zero false positives)
+    per_seed = [tpr_at_fpr(z["post_npo__loss_threshold__forget"], z["post_npo__loss_threshold__primary"], 0.001)
+                for z in zs]
+    zero_fp = [np.mean(z["post_npo__loss_threshold__forget"] > z["post_npo__loss_threshold__primary"].max())
+               for z in zs]
+    assert per_seed == pytest.approx(zero_fp) and r["n_nonmember_per_seed"] == 40
+    assert r["tpr_at_0.1_seed_mean"] == pytest.approx(np.mean(per_seed))
+    assert r["tpr_at_0.1_seed_half"] == pytest.approx(analysis.t_ci(per_seed)["half"])
 
 
 def test_update_attacks_and_control(results):
@@ -178,6 +205,9 @@ def test_costs_slowdown_tofu_hyper(results):
     summary, zero = analysis.tofu(df)
     z = zero[(zero["model"] == "distilgpt2") & (zero["column"] == "model_utility_post")].iloc[0]
     assert (z["rows"], z["zero"]) == (10, 1)
+    mu = summary[(summary["model"] == "distilgpt2") & (summary["method"] == "npo")].set_index("column")
+    assert (mu.loc["model_utility_post", "n"], mu.loc["model_utility_post", "mean"]) == (5, pytest.approx(0.32))
+    assert (mu.loc["model_utility_post_nonzero", "n"], mu.loc["model_utility_post_nonzero", "mean"]) == (4, 0.4)
     hyper = analysis.hyperparameters(a["configs"], {"central": "central"})
     assert hyper.loc["seeds", "central"] == "0, 1, 2, 3, 4"
     assert hyper.loc["models", "central"] == "distilgpt2, gpt2, gpt2-medium"
@@ -197,7 +227,10 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
     assert "\\textbf{All}" in fed and "\\textbf{Typical}" in fed and "\\textbf{Outlier}" in fed
     central = (tmp_path / "tab" / "tab_central_loss_threshold_primary.tex").read_text()
     assert "\\pm" in central and "GPT-2-medium" in central and "\\textbf{All}" in central
-    assert "Rows with model utility 0: 1 of" in (tmp_path / "tab" / "tab_tofu.tex").read_text()
+    tofu = (tmp_path / "tab" / "tab_tofu.tex").read_text()
+    assert "Rows with model utility 0: 1 of" in tofu and "MU excl. 0" in tofu
+    low = (tmp_path / "tab" / "tab_low_fpr.tex").read_text()
+    assert "TPR at zero false positives (40 non-members)" in low and "\\shortstack{TPR@0.1\\%\\\\pooled}" in low
     figs = {p.name for p in a["figures"]}
     assert {"fig_rev_central.pdf", "fig_rev_strata.pdf", "fig_rev_update.pdf", "fig_rev_fed_update.pdf",
             "fig_rev_control.pdf", "fig_rev_costs.pdf"} <= figs

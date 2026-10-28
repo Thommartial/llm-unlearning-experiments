@@ -126,22 +126,27 @@ def h1(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def h2(df: pd.DataFrame) -> pd.DataFrame:
-    """H2 over the GPT-2 series (central): slope of gap_post on log10(parameters)
-    with a t-interval (all seed rows); per model: gap_post, |AUC - 0.5| after
-    unlearning and the relative drop (adv_pre - adv_post) / adv_pre."""
+    """H2 over the GPT-2 series (central): slope of gap_post on log10(parameters),
+    fitted within each seed (the seeds share the non-member draw across models),
+    as the mean and t-interval over seeds (df = seeds - 1); per model: gap_post,
+    |AUC - 0.5| after unlearning and the relative drop (adv_pre - adv_post) / adv_pre."""
     from scipy import stats
 
     d = df[(df["kind"] == "central") & df["model"].isin(GPT2_PARAMS) & (df["method"] != "retrain")]
     out = []
     for keys, g in d.groupby(["method", "attack", "nonmember"], sort=False):
         row = dict(zip(["method", "attack", "nonmember"], keys, strict=True))
-        x = np.log10(g["model"].map(GPT2_PARAMS).to_numpy(float))
-        y = g["gap_post"].to_numpy(float)
-        ok = np.isfinite(y)
-        if ok.sum() > 2 and len(set(x[ok])) > 1:
-            fit = stats.linregress(x[ok], y[ok])
-            half = stats.t.ppf(0.975, ok.sum() - 2) * fit.stderr
-            row.update(slope=fit.slope, slope_lo=fit.slope - half, slope_hi=fit.slope + half, n=int(ok.sum()))
+        slopes = []
+        for _, gs in g.groupby("seed", sort=True):
+            x = np.log10(gs["model"].map(GPT2_PARAMS).to_numpy(float))
+            y = gs["gap_post"].to_numpy(float)
+            ok = np.isfinite(y)
+            if len(set(x[ok])) > 1:
+                slopes.append(stats.linregress(x[ok], y[ok]).slope)
+        if slopes:
+            fit = t_ci(slopes)
+            row.update(slope=fit["mean"], slope_half=fit["half"], slope_lo=fit["lo"], slope_hi=fit["hi"],
+                       n_seeds=fit["n"])
         for m in _order(g["model"], MODEL_ORDER):
             gm = g[g["model"] == m]
             drop = (gm["adv_pre"] - gm["adv_post"]) / gm["adv_pre"]
@@ -184,7 +189,10 @@ def pooled_low_fpr(df: pd.DataFrame, scores_dir) -> pd.DataFrame:
     """TPR at 0.1% FPR with forget and non-member scores pooled over the seeds
     (400 negatives per run cannot resolve 0.1%; 5 seeds give 2,000), and TPR
     at 1% FPR within the outlier and typical strata (basediff, rarity: forget
-    outliers against non-member outliers), pooled the same way."""
+    outliers against non-member outliers), pooled the same way. Next to the
+    pooled TPR@0.1%: its per-seed mean and t-interval; with 400 non-members a
+    seed allows no false positive at 0.1%, so this is the TPR at zero false
+    positives (`n_nonmember_per_seed` gives the count)."""
     from .evaluate import tpr_at_fpr
 
     out = []
@@ -207,6 +215,10 @@ def pooled_low_fpr(df: pd.DataFrame, scores_dir) -> pd.DataFrame:
                     row = {**dict(zip(KEY, keys, strict=True)), "stage": stage, "attack": attack, "nonmember": nm,
                            "n_seeds": len(zs), "n_forget": len(f), "n_nonmember": len(h),
                            "tpr_at_0.1": tpr_at_fpr(f, h, 0.001), "tpr_at_1": tpr_at_fpr(f, h, 0.01)}
+                    per_seed = t_ci([tpr_at_fpr(z[k_f], z[k_h], 0.001) for z in zs])
+                    sizes = sorted({len(z[k_h]) for z in zs})
+                    row.update({"tpr_at_0.1_seed_mean": per_seed["mean"], "tpr_at_0.1_seed_half": per_seed["half"],
+                                "n_nonmember_per_seed": sizes[0] if len(sizes) == 1 else np.nan})
                     for defn in ("basediff", "rarity"):
                         kt_f, kt_h = f"strata__{nm}__{defn}__forget", f"strata__{nm}__{defn}__holdout"
                         if not all(kt_f in z and kt_h in z for z in zs):
@@ -335,9 +347,13 @@ def pilot_slowdown(df: pd.DataFrame, pilot: pd.DataFrame | None) -> pd.DataFrame
 
 def tofu(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Forget quality and model utility per method (mean and CI over seeds),
-    and the count of rows with model utility 0 (one row per seed and method)."""
+    model utility without the rows where it is 0 (`model_utility_post_nonzero`,
+    a sensitivity check), and the count of rows with model utility 0 (one row
+    per seed and method)."""
     d = per_unit(df)
-    summary = summarise(d, KEY + ["method"], ["forget_quality_post", "model_utility_post", "model_utility_pre"])
+    d = d.assign(model_utility_post_nonzero=d["model_utility_post"].where(d["model_utility_post"] != 0))
+    summary = summarise(d, KEY + ["method"], ["forget_quality_post", "model_utility_post",
+                                              "model_utility_post_nonzero", "model_utility_pre"])
     zeros = []
     for keys, g in d.groupby(KEY, sort=False):
         for col in ("model_utility_pre", "model_utility_post"):
@@ -490,13 +506,14 @@ def write_tables(a: dict, out) -> list[Path]:
         models = [m for m in GPT2_PARAMS if f"{m}__gap_post" in a["h2"]]
         rows = []
         for r in a["h2"].to_dict("records"):
-            slope = (_fmt(r["slope"], (r["slope_hi"] - r["slope_lo"]) / 2, 3) if pd.notna(r.get("slope")) else "--")
+            slope = _fmt(r["slope"], r["slope_half"], 3) if pd.notna(r.get("slope")) else "--"
             rows.append([METHOD_NAMES.get(r["method"], r["method"]), ATTACK_NAMES[r["attack"]], _tex(r["nonmember"]),
                          *[_fmt(r[f"{m}__gap_post"], r[f"{m}__gap_post_half"]) for m in models],
                          *[_fmt(r[f"{m}__rel_drop"], r[f"{m}__rel_drop_half"]) for m in models], slope])
         save("tab_h2.tex", "H2: retrain-relative gap and relative advantage drop "
              "$(\\mathrm{adv}_{pre}-\\mathrm{adv}_{post})/\\mathrm{adv}_{pre}$ across the GPT-2 series; "
-             "slope of the gap per decade of parameters.", "tab:h2",
+             "slope of the gap per decade of parameters, fitted within each seed (mean and t-interval over "
+             "seeds).", "tab:h2",
              [" & ".join([_b("Method"), _b("Attack"), _b("Non-members")]
                          + [_b("Gap " + _model(m)) for m in models] + [_b("Drop " + _model(m)) for m in models]
                          + [_b("Slope")])], rows, ci_note, align="lll" + "c" * (2 * len(models) + 1))
@@ -519,15 +536,28 @@ def write_tables(a: dict, out) -> list[Path]:
         lf = lf[lf["stage"].str.startswith("post_") & (lf["attack"] != "ref_calibrated")]
         rows = [[_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["stage"][5:], r["stage"]),
                  ATTACK_NAMES[r["attack"]], _tex(r["nonmember"]), str(r["n_seeds"]), str(r["n_nonmember"]),
-                 _fmt(r["tpr_at_0.1"], digits=3), _fmt(r.get("tpr_at_1_outlier_basediff"), digits=3),
+                 _fmt(r["tpr_at_0.1"], digits=3), _fmt(r["tpr_at_0.1_seed_mean"], r["tpr_at_0.1_seed_half"], 3),
+                 _fmt(r.get("tpr_at_1_outlier_basediff"), digits=3),
                  _fmt(r.get("tpr_at_1_typical_basediff"), digits=3)] for r in lf.to_dict("records")]
-        save("tab_low_fpr.tex", "TPR at 0.1\\% FPR with scores pooled over seeds, and TPR at 1\\% FPR within "
-             "the base-difficulty strata (outlier forget vs outlier non-members), pooled the same way.",
+        sizes = sorted({int(n) for n in lf["n_nonmember_per_seed"] if pd.notna(n)})
+        count = f"{sizes[0]}" if len(sizes) == 1 else f"{sizes[0]}--{sizes[-1]}" if sizes else "?"
+        # below 1,000 non-members a seed's 0.1% FPR allows no false positive
+        zero_fp = bool(sizes) and sizes[-1] < 1000
+        per_seed = (f"TPR at zero false positives ({count} non-members)" if zero_fp
+                    else f"TPR@0.1\\% per seed ({count} non-members)")
+        save("tab_low_fpr.tex", "TPR at 0.1\\% FPR with scores pooled over seeds, its per-seed mean, and TPR at "
+             "1\\% FPR within the base-difficulty strata (outlier forget vs outlier non-members), pooled the same "
+             "way.",
              "tab:low-fpr", [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Attack", "Non-members", "Seeds",
-                                                        "Negatives", "TPR@0.1\\%", "TPR@1\\% out.",
-                                                        "TPR@1\\% typ."))],
+                                                        "Negatives", "\\shortstack{TPR@0.1\\%\\\\pooled}",
+                                                        "\\shortstack{" + per_seed.replace(" (", "\\\\(").replace(
+                                                            " false", "\\\\false") + "}",
+                                                        "\\shortstack{TPR@1\\%\\\\outlier}",
+                                                        "\\shortstack{TPR@1\\%\\\\typical}"))],
              rows, "Pooling puts runs with different models on one threshold; with 2,000 negatives, 0.1\\% FPR "
-             "corresponds to 2 false positives.", align="lllll" + "c" * 5)
+             "corresponds to 2 false positives. " + per_seed + ": the per-seed TPR@0.1\\%"
+             + (", which allows no false positive at that size," if zero_fp else "")
+             + " as mean and t-interval over seeds (no pooling).", align="lllll" + "c" * 6)
     if not a["update"].empty:
         u = a["update"]
         rows = [[_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["method"], r["method"]),
@@ -584,14 +614,16 @@ def write_tables(a: dict, out) -> list[Path]:
         rows = []
         for keys, g in s.groupby(KEY + ["method"], sort=False):
             rows.append([_model(keys[2]), _tex(keys[3]), METHOD_NAMES.get(keys[4], keys[4]),
-                         _ci_cell(g, "forget_quality_post", 3), _ci_cell(g, "model_utility_post", 3)])
+                         _ci_cell(g, "forget_quality_post", 3), _ci_cell(g, "model_utility_post", 3),
+                         _ci_cell(g, "model_utility_post_nonzero", 3)])
         zero = a["mu_zero"]
         z = int(zero[zero["column"] == "model_utility_post"]["zero"].sum()) if not zero.empty else 0
         n = int(zero[zero["column"] == "model_utility_post"]["rows"].sum()) if not zero.empty else 0
         save("tab_tofu.tex", "TOFU forget quality (KS test against the retrained model of the same seed) and model "
              "utility.", "tab:tofu", [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Forget quality",
-                                                                    "Model utility"))], rows,
-             ci_note + f" Rows with model utility 0: {z} of {n}.", align="lllcc")
+                                                                    "Model utility", "MU excl. 0"))], rows,
+             ci_note + f" Rows with model utility 0: {z} of {n}. MU excl.\\ 0: model utility without those rows "
+             "(sensitivity check).", align="lllccc")
     if not a["hyper"].empty:
         h = a["hyper"]
         rows = [[_tex(k)] + [_tex(v) if isinstance(v, str) else "--" for v in h.loc[k]] for k in h.index]
