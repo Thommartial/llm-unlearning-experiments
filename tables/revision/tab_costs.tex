@@ -1,0 +1,25 @@
+\begin{table*}[t]
+\centering
+\caption{H6: cost of client-level gradient ascent with recovery against federated retraining, per setting (ratios paired by seed).}
+\label{tab:costs}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccccc@{}}
+\toprule
+ & & & \multicolumn{3}{c}{\textbf{Wall time (min)}} & \multicolumn{2}{c}{\textbf{Peak memory}} & \multicolumn{3}{c}{\textbf{Communication (GiB)}} \\
+\cmidrule(lr){4-6}\cmidrule(lr){7-8}\cmidrule(lr){9-11}
+\textbf{Model} & \textbf{Sharding} & \textbf{$K$} & \textbf{GA} & \textbf{Retrain} & \textbf{Ratio} & \textbf{Alloc.} & \textbf{Reserved} & \textbf{GA} & \textbf{Retrain} & \textbf{Ratio} \\
+\midrule
+GPT-2 & by\_author & 5 & $1.8 \pm 0.0$ & $5.3 \pm 0.1$ & $0.33 \pm 0.01$ & $1.00 \pm 0.00$ & $1.01 \pm 0.03$ & $8.34$ & $29.67$ & $0.28$ \\
+GPT-2 & iid & 3 & $1.8 \pm 0.0$ & $5.3 \pm 0.0$ & $0.33 \pm 0.00$ & $1.00 \pm 0.00$ & $1.02 \pm 0.08$ & $4.64$ & $14.83$ & $0.31$ \\
+GPT-2 & iid & 10 & $1.8 \pm 0.0$ & $5.3 \pm 0.0$ & $0.33 \pm 0.00$ & $1.00 \pm 0.00$ & $1.00 \pm 0.00$ & $17.62$ & $66.75$ & $0.26$ \\
+DistilGPT-2 & iid & 5 & $1.1 \pm 0.0$ & $3.5 \pm 0.1$ & $0.33 \pm 0.00$ & $1.00 \pm 0.00$ & $1.00 \pm 0.01$ & $5.49$ & $19.53$ & $0.28$ \\
+GPT-2 & iid & 5 & $1.8 \pm 0.0$ & $5.3 \pm 0.1$ & $0.33 \pm 0.00$ & $1.00 \pm 0.00$ & $1.01 \pm 0.02$ & $8.34$ & $29.67$ & $0.28$ \\
+GPT-2-medium & iid & 5 & $4.8 \pm 0.1$ & $14.5 \pm 0.2$ & $0.33 \pm 0.00$ & $1.00 \pm 0.01$ & $1.01 \pm 0.02$ & $23.79$ & $84.60$ & $0.28$ \\
+\bottomrule
+\end{tabular*}
+
+\smallskip
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed. GA: client gradient ascent plus recovery rounds. Peak memory as the ratio GA / retrain (allocated and reserved). Time and peak GPU memory are measured; communication is analytic (fp32 parameters).\par}
+\end{table*}

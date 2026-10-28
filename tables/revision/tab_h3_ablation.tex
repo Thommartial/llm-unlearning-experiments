@@ -1,0 +1,269 @@
+\begin{table*}[t]
+\centering
+\caption{H3 ablation (appendix): retrain-relative gap of outliers minus typical records, paired by seed.}
+\label{tab:h3-ablation}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\toprule
+\textbf{Model} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Definition} & \textbf{Gap out.} & \textbf{Gap typ.} & \textbf{Difference} & \textbf{CI excl. 0} & \textbf{Adv. out.} & \textbf{Adv. typ.} \\
+\midrule
+DistilGPT-2 & GA & Loss thr. & primary & legacy & $-0.24$ & $0.14$ & $-0.388 \pm 0.363$ & yes & $0.19$ & $0.08$ \\
+DistilGPT-2 & GA & Loss thr. & primary & legacy\_pooled & $0.16$ & $0.11$ & $0.049 \pm 0.110$ & no & $0.07$ & $0.05$ \\
+DistilGPT-2 & GA & Loss thr. & holdout10 & legacy & $-0.22$ & $0.26$ & $-0.480 \pm 0.378$ & yes & $0.28$ & $0.01$ \\
+DistilGPT-2 & GA & Loss thr. & holdout10 & legacy\_pooled & $0.21$ & $0.26$ & $-0.058 \pm 0.046$ & yes & $0.05$ & $0.04$ \\
+DistilGPT-2 & GA & Min-K\% & primary & legacy & $-0.17$ & $0.09$ & $-0.261 \pm 0.296$ & no & $0.14$ & $0.09$ \\
+DistilGPT-2 & GA & Min-K\% & primary & legacy\_pooled & $0.10$ & $0.05$ & $0.052 \pm 0.071$ & no & $0.08$ & $0.05$ \\
+DistilGPT-2 & GA & Min-K\% & holdout10 & legacy & $-0.12$ & $0.19$ & $-0.302 \pm 0.314$ & no & $0.21$ & $0.03$ \\
+DistilGPT-2 & GA & Min-K\% & holdout10 & legacy\_pooled & $0.17$ & $0.17$ & $0.000 \pm 0.079$ & no & $0.05$ & $0.02$ \\
+DistilGPT-2 & GA & Ref.-calib. & primary & legacy & $-0.03$ & $0.05$ & $-0.083 \pm 0.398$ & no & $0.20$ & $0.09$ \\
+DistilGPT-2 & GA & Ref.-calib. & primary & legacy\_pooled & $0.06$ & $0.03$ & $0.030 \pm 0.112$ & no & $0.05$ & $0.04$ \\
+DistilGPT-2 & GA & Ref.-calib. & holdout10 & legacy & $-0.09$ & $0.01$ & $-0.100 \pm 0.415$ & no & $0.29$ & $0.08$ \\
+DistilGPT-2 & GA & Ref.-calib. & holdout10 & legacy\_pooled & $0.02$ & $-0.01$ & $0.031 \pm 0.046$ & no & $0.06$ & $0.10$ \\
+DistilGPT-2 & GD & Loss thr. & primary & legacy & $-0.09$ & $-0.03$ & $-0.065 \pm 0.031$ & yes & $0.21$ & $0.23$ \\
+DistilGPT-2 & GD & Loss thr. & primary & legacy\_pooled & $0.02$ & $-0.03$ & $0.049 \pm 0.021$ & yes & $0.21$ & $0.17$ \\
+DistilGPT-2 & GD & Loss thr. & holdout10 & legacy & $-0.05$ & $0.10$ & $-0.156 \pm 0.027$ & yes & $0.29$ & $0.14$ \\
+DistilGPT-2 & GD & Loss thr. & holdout10 & legacy\_pooled & $0.06$ & $0.14$ & $-0.079 \pm 0.029$ & yes & $0.12$ & $0.09$ \\
+DistilGPT-2 & GD & Min-K\% & primary & legacy & $-0.10$ & $-0.01$ & $-0.087 \pm 0.013$ & yes & $0.10$ & $0.18$ \\
+DistilGPT-2 & GD & Min-K\% & primary & legacy\_pooled & $-0.02$ & $-0.02$ & $-0.003 \pm 0.020$ & no & $0.20$ & $0.12$ \\
+DistilGPT-2 & GD & Min-K\% & holdout10 & legacy & $-0.02$ & $0.13$ & $-0.152 \pm 0.017$ & yes & $0.19$ & $0.07$ \\
+DistilGPT-2 & GD & Min-K\% & holdout10 & legacy\_pooled & $0.07$ & $0.16$ & $-0.087 \pm 0.024$ & yes & $0.12$ & $0.01$ \\
+DistilGPT-2 & GD & Ref.-calib. & primary & legacy & $-0.03$ & $-0.06$ & $0.037 \pm 0.035$ & yes & $0.02$ & $0.15$ \\
+DistilGPT-2 & GD & Ref.-calib. & primary & legacy\_pooled & $-0.05$ & $-0.06$ & $0.010 \pm 0.016$ & no & $0.16$ & $0.10$ \\
+DistilGPT-2 & GD & Ref.-calib. & holdout10 & legacy & $-0.00$ & $-0.01$ & $0.013 \pm 0.034$ & no & $0.19$ & $0.06$ \\
+DistilGPT-2 & GD & Ref.-calib. & holdout10 & legacy\_pooled & $-0.07$ & $0.01$ & $-0.073 \pm 0.040$ & yes & $0.03$ & $0.12$ \\
+DistilGPT-2 & NPO & Loss thr. & primary & legacy & $-0.16$ & $-0.01$ & $-0.147 \pm 0.044$ & yes & $0.14$ & $0.22$ \\
+DistilGPT-2 & NPO & Loss thr. & primary & legacy\_pooled & $-0.02$ & $-0.02$ & $-0.005 \pm 0.033$ & no & $0.25$ & $0.16$ \\
+DistilGPT-2 & NPO & Loss thr. & holdout10 & legacy & $-0.15$ & $0.07$ & $-0.217 \pm 0.033$ & yes & $0.19$ & $0.18$ \\
+DistilGPT-2 & NPO & Loss thr. & holdout10 & legacy\_pooled & $-0.03$ & $0.10$ & $-0.137 \pm 0.025$ & yes & $0.22$ & $0.13$ \\
+DistilGPT-2 & NPO & Min-K\% & primary & legacy & $-0.15$ & $0.02$ & $-0.175 \pm 0.030$ & yes & $0.05$ & $0.15$ \\
+DistilGPT-2 & NPO & Min-K\% & primary & legacy\_pooled & $-0.03$ & $0.02$ & $-0.050 \pm 0.015$ & yes & $0.21$ & $0.09$ \\
+DistilGPT-2 & NPO & Min-K\% & holdout10 & legacy & $-0.10$ & $0.12$ & $-0.221 \pm 0.035$ & yes & $0.11$ & $0.08$ \\
+DistilGPT-2 & NPO & Min-K\% & holdout10 & legacy\_pooled & $0.01$ & $0.15$ & $-0.137 \pm 0.020$ & yes & $0.19$ & $0.02$ \\
+DistilGPT-2 & NPO & Ref.-calib. & primary & legacy & $-0.18$ & $0.00$ & $-0.179 \pm 0.032$ & yes & $0.13$ & $0.08$ \\
+DistilGPT-2 & NPO & Ref.-calib. & primary & legacy\_pooled & $-0.07$ & $-0.02$ & $-0.050 \pm 0.038$ & yes & $0.18$ & $0.06$ \\
+DistilGPT-2 & NPO & Ref.-calib. & holdout10 & legacy & $-0.18$ & $-0.00$ & $-0.174 \pm 0.028$ & yes & $0.04$ & $0.07$ \\
+DistilGPT-2 & NPO & Ref.-calib. & holdout10 & legacy\_pooled & $-0.14$ & $0.00$ & $-0.146 \pm 0.021$ & yes & $0.10$ & $0.11$ \\
+GPT-2 & GA & Loss thr. & primary & legacy & $-0.26$ & $0.14$ & $-0.402 \pm 0.269$ & yes & $0.13$ & $0.07$ \\
+GPT-2 & GA & Loss thr. & primary & legacy\_pooled & $0.22$ & $0.12$ & $0.102 \pm 0.115$ & no & $0.06$ & $0.06$ \\
+GPT-2 & GA & Loss thr. & holdout10 & legacy & $-0.22$ & $0.27$ & $-0.489 \pm 0.278$ & yes & $0.21$ & $0.02$ \\
+GPT-2 & GA & Loss thr. & holdout10 & legacy\_pooled & $0.30$ & $0.29$ & $0.010 \pm 0.065$ & no & $0.05$ & $0.05$ \\
+GPT-2 & GA & Min-K\% & primary & legacy & $-0.16$ & $0.10$ & $-0.255 \pm 0.227$ & yes & $0.11$ & $0.08$ \\
+GPT-2 & GA & Min-K\% & primary & legacy\_pooled & $0.17$ & $0.06$ & $0.108 \pm 0.091$ & yes & $0.09$ & $0.06$ \\
+GPT-2 & GA & Min-K\% & holdout10 & legacy & $-0.07$ & $0.23$ & $-0.297 \pm 0.240$ & yes & $0.16$ & $0.04$ \\
+GPT-2 & GA & Min-K\% & holdout10 & legacy\_pooled & $0.26$ & $0.22$ & $0.046 \pm 0.125$ & no & $0.07$ & $0.02$ \\
+GPT-2 & GA & Ref.-calib. & primary & legacy & $-0.04$ & $0.06$ & $-0.090 \pm 0.285$ & no & $0.15$ & $0.06$ \\
+GPT-2 & GA & Ref.-calib. & primary & legacy\_pooled & $0.10$ & $0.03$ & $0.069 \pm 0.091$ & no & $0.06$ & $0.05$ \\
+GPT-2 & GA & Ref.-calib. & holdout10 & legacy & $-0.10$ & $0.02$ & $-0.114 \pm 0.285$ & no & $0.21$ & $0.09$ \\
+GPT-2 & GA & Ref.-calib. & holdout10 & legacy\_pooled & $0.06$ & $-0.00$ & $0.056 \pm 0.079$ & no & $0.09$ & $0.10$ \\
+GPT-2 & GD & Loss thr. & primary & legacy & $-0.09$ & $-0.03$ & $-0.058 \pm 0.023$ & yes & $0.21$ & $0.24$ \\
+GPT-2 & GD & Loss thr. & primary & legacy\_pooled & $0.03$ & $-0.03$ & $0.062 \pm 0.027$ & yes & $0.24$ & $0.20$ \\
+GPT-2 & GD & Loss thr. & holdout10 & legacy & $-0.05$ & $0.09$ & $-0.136 \pm 0.017$ & yes & $0.29$ & $0.16$ \\
+GPT-2 & GD & Loss thr. & holdout10 & legacy\_pooled & $0.10$ & $0.13$ & $-0.029 \pm 0.042$ & no & $0.14$ & $0.13$ \\
+GPT-2 & GD & Min-K\% & primary & legacy & $-0.10$ & $-0.03$ & $-0.062 \pm 0.018$ & yes & $0.10$ & $0.21$ \\
+GPT-2 & GD & Min-K\% & primary & legacy\_pooled & $-0.02$ & $-0.04$ & $0.022 \pm 0.040$ & no & $0.23$ & $0.16$ \\
+GPT-2 & GD & Min-K\% & holdout10 & legacy & $-0.01$ & $0.10$ & $-0.113 \pm 0.013$ & yes & $0.19$ & $0.11$ \\
+GPT-2 & GD & Min-K\% & holdout10 & legacy\_pooled & $0.09$ & $0.13$ & $-0.034 \pm 0.051$ & no & $0.13$ & $0.07$ \\
+GPT-2 & GD & Ref.-calib. & primary & legacy & $0.00$ & $-0.09$ & $0.086 \pm 0.037$ & yes & $0.03$ & $0.17$ \\
+GPT-2 & GD & Ref.-calib. & primary & legacy\_pooled & $-0.06$ & $-0.07$ & $0.013 \pm 0.046$ & no & $0.19$ & $0.13$ \\
+GPT-2 & GD & Ref.-calib. & holdout10 & legacy & $0.02$ & $-0.04$ & $0.058 \pm 0.050$ & yes & $0.20$ & $0.07$ \\
+GPT-2 & GD & Ref.-calib. & holdout10 & legacy\_pooled & $-0.06$ & $-0.02$ & $-0.047 \pm 0.066$ & no & $0.03$ & $0.10$ \\
+GPT-2 & NPO & Loss thr. & primary & legacy & $-0.20$ & $-0.04$ & $-0.166 \pm 0.061$ & yes & $0.12$ & $0.25$ \\
+GPT-2 & NPO & Loss thr. & primary & legacy\_pooled & $-0.00$ & $-0.03$ & $0.028 \pm 0.044$ & no & $0.27$ & $0.20$ \\
+GPT-2 & NPO & Loss thr. & holdout10 & legacy & $-0.19$ & $0.04$ & $-0.229 \pm 0.063$ & yes & $0.15$ & $0.21$ \\
+GPT-2 & NPO & Loss thr. & holdout10 & legacy\_pooled & $0.02$ & $0.08$ & $-0.060 \pm 0.065$ & no & $0.23$ & $0.18$ \\
+GPT-2 & NPO & Min-K\% & primary & legacy & $-0.21$ & $-0.03$ & $-0.182 \pm 0.073$ & yes & $0.08$ & $0.20$ \\
+GPT-2 & NPO & Min-K\% & primary & legacy\_pooled & $-0.03$ & $-0.04$ & $0.011 \pm 0.047$ & no & $0.25$ & $0.16$ \\
+GPT-2 & NPO & Min-K\% & holdout10 & legacy & $-0.17$ & $0.06$ & $-0.227 \pm 0.080$ & yes & $0.09$ & $0.15$ \\
+GPT-2 & NPO & Min-K\% & holdout10 & legacy\_pooled & $0.02$ & $0.08$ & $-0.058 \pm 0.069$ & no & $0.21$ & $0.12$ \\
+GPT-2 & NPO & Ref.-calib. & primary & legacy & $-0.17$ & $-0.07$ & $-0.103 \pm 0.076$ & yes & $0.15$ & $0.15$ \\
+GPT-2 & NPO & Ref.-calib. & primary & legacy\_pooled & $-0.10$ & $-0.07$ & $-0.034 \pm 0.075$ & no & $0.23$ & $0.13$ \\
+GPT-2 & NPO & Ref.-calib. & holdout10 & legacy & $-0.19$ & $-0.08$ & $-0.108 \pm 0.086$ & yes & $0.07$ & $0.09$ \\
+GPT-2 & NPO & Ref.-calib. & holdout10 & legacy\_pooled & $-0.16$ & $-0.07$ & $-0.087 \pm 0.094$ & no & $0.12$ & $0.11$ \\
+GPT-2-medium & GA & Loss thr. & primary & legacy & $-0.19$ & $0.18$ & $-0.365 \pm 0.349$ & yes & $0.17$ & $0.10$ \\
+GPT-2-medium & GA & Loss thr. & primary & legacy\_pooled & $0.30$ & $0.18$ & $0.122 \pm 0.077$ & yes & $0.09$ & $0.07$ \\
+GPT-2-medium & GA & Loss thr. & holdout10 & legacy & $-0.17$ & $0.27$ & $-0.444 \pm 0.347$ & yes & $0.27$ & $0.03$ \\
+GPT-2-medium & GA & Loss thr. & holdout10 & legacy\_pooled & $0.34$ & $0.32$ & $0.024 \pm 0.104$ & no & $0.05$ & $0.05$ \\
+GPT-2-medium & GA & Min-K\% & primary & legacy & $-0.12$ & $0.14$ & $-0.261 \pm 0.318$ & no & $0.18$ & $0.08$ \\
+GPT-2-medium & GA & Min-K\% & primary & legacy\_pooled & $0.20$ & $0.13$ & $0.068 \pm 0.057$ & yes & $0.11$ & $0.06$ \\
+GPT-2-medium & GA & Min-K\% & holdout10 & legacy & $-0.09$ & $0.23$ & $-0.319 \pm 0.336$ & no & $0.26$ & $0.01$ \\
+GPT-2-medium & GA & Min-K\% & holdout10 & legacy\_pooled & $0.24$ & $0.25$ & $-0.016 \pm 0.046$ & no & $0.06$ & $0.02$ \\
+GPT-2-medium & GA & Ref.-calib. & primary & legacy & $0.04$ & $0.06$ & $-0.030 \pm 0.358$ & no & $0.17$ & $0.10$ \\
+GPT-2-medium & GA & Ref.-calib. & primary & legacy\_pooled & $0.11$ & $0.05$ & $0.063 \pm 0.071$ & no & $0.08$ & $0.07$ \\
+GPT-2-medium & GA & Ref.-calib. & holdout10 & legacy & $-0.05$ & $-0.00$ & $-0.044 \pm 0.350$ & no & $0.27$ & $0.07$ \\
+GPT-2-medium & GA & Ref.-calib. & holdout10 & legacy\_pooled & $0.03$ & $-0.00$ & $0.031 \pm 0.104$ & no & $0.05$ & $0.07$ \\
+GPT-2-medium & GD & Loss thr. & primary & legacy & $-0.70$ & $-0.27$ & $-0.431 \pm 0.066$ & yes & $0.44$ & $0.48$ \\
+GPT-2-medium & GD & Loss thr. & primary & legacy\_pooled & $-0.11$ & $-0.27$ & $0.158 \pm 0.053$ & yes & $0.46$ & $0.48$ \\
+GPT-2-medium & GD & Loss thr. & holdout10 & legacy & $-0.71$ & $-0.21$ & $-0.494 \pm 0.058$ & yes & $0.41$ & $0.46$ \\
+GPT-2-medium & GD & Loss thr. & holdout10 & legacy\_pooled & $-0.11$ & $-0.16$ & $0.052 \pm 0.021$ & yes & $0.45$ & $0.46$ \\
+GPT-2-medium & GD & Min-K\% & primary & legacy & $-0.61$ & $-0.28$ & $-0.325 \pm 0.066$ & yes & $0.44$ & $0.48$ \\
+GPT-2-medium & GD & Min-K\% & primary & legacy\_pooled & $-0.15$ & $-0.31$ & $0.157 \pm 0.063$ & yes & $0.46$ & $0.48$ \\
+GPT-2-medium & GD & Min-K\% & holdout10 & legacy & $-0.58$ & $-0.21$ & $-0.363 \pm 0.058$ & yes & $0.41$ & $0.45$ \\
+GPT-2-medium & GD & Min-K\% & holdout10 & legacy\_pooled & $-0.13$ & $-0.20$ & $0.070 \pm 0.028$ & yes & $0.43$ & $0.45$ \\
+GPT-2-medium & GD & Ref.-calib. & primary & legacy & $-0.45$ & $-0.40$ & $-0.047 \pm 0.059$ & no & $0.45$ & $0.48$ \\
+GPT-2-medium & GD & Ref.-calib. & primary & legacy\_pooled & $-0.33$ & $-0.42$ & $0.094 \pm 0.063$ & yes & $0.46$ & $0.48$ \\
+GPT-2-medium & GD & Ref.-calib. & holdout10 & legacy & $-0.57$ & $-0.53$ & $-0.038 \pm 0.062$ & no & $0.42$ & $0.46$ \\
+GPT-2-medium & GD & Ref.-calib. & holdout10 & legacy\_pooled & $-0.47$ & $-0.54$ & $0.069 \pm 0.026$ & yes & $0.44$ & $0.46$ \\
+GPT-2-medium & NPO & Loss thr. & primary & legacy & $-0.65$ & $-0.21$ & $-0.442 \pm 0.042$ & yes & $0.39$ & $0.42$ \\
+GPT-2-medium & NPO & Loss thr. & primary & legacy\_pooled & $-0.06$ & $-0.20$ & $0.143 \pm 0.032$ & yes & $0.41$ & $0.42$ \\
+GPT-2-medium & NPO & Loss thr. & holdout10 & legacy & $-0.64$ & $-0.13$ & $-0.510 \pm 0.043$ & yes & $0.35$ & $0.38$ \\
+GPT-2-medium & NPO & Loss thr. & holdout10 & legacy\_pooled & $-0.07$ & $-0.08$ & $0.012 \pm 0.020$ & no & $0.40$ & $0.38$ \\
+GPT-2-medium & NPO & Min-K\% & primary & legacy & $-0.58$ & $-0.21$ & $-0.366 \pm 0.046$ & yes & $0.41$ & $0.41$ \\
+GPT-2-medium & NPO & Min-K\% & primary & legacy\_pooled & $-0.10$ & $-0.24$ & $0.139 \pm 0.039$ & yes & $0.41$ & $0.41$ \\
+GPT-2-medium & NPO & Min-K\% & holdout10 & legacy & $-0.55$ & $-0.12$ & $-0.421 \pm 0.041$ & yes & $0.37$ & $0.37$ \\
+GPT-2-medium & NPO & Min-K\% & holdout10 & legacy\_pooled & $-0.10$ & $-0.11$ & $0.013 \pm 0.021$ & no & $0.39$ & $0.36$ \\
+GPT-2-medium & NPO & Ref.-calib. & primary & legacy & $-0.42$ & $-0.33$ & $-0.093 \pm 0.039$ & yes & $0.42$ & $0.40$ \\
+GPT-2-medium & NPO & Ref.-calib. & primary & legacy\_pooled & $-0.27$ & $-0.35$ & $0.080 \pm 0.047$ & yes & $0.40$ & $0.41$ \\
+GPT-2-medium & NPO & Ref.-calib. & holdout10 & legacy & $-0.52$ & $-0.43$ & $-0.097 \pm 0.048$ & yes & $0.37$ & $0.36$ \\
+GPT-2-medium & NPO & Ref.-calib. & holdout10 & legacy\_pooled & $-0.41$ & $-0.43$ & $0.016 \pm 0.024$ & no & $0.39$ & $0.35$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy & $-0.38$ & $0.14$ & $-0.523 \pm 0.688$ & no & $0.17$ & $0.08$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy\_pooled & $0.02$ & $0.03$ & $-0.007 \pm 0.153$ & no & $0.09$ & $0.08$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy & $-0.36$ & $0.25$ & $-0.609 \pm 0.672$ & no & $0.23$ & $0.03$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy\_pooled & $0.07$ & $0.18$ & $-0.102 \pm 0.154$ & no & $0.09$ & $0.07$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy & $-0.35$ & $0.08$ & $-0.423 \pm 0.525$ & no & $0.16$ & $0.11$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy\_pooled & $-0.03$ & $-0.03$ & $-0.001 \pm 0.034$ & no & $0.13$ & $0.11$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy & $-0.27$ & $0.20$ & $-0.476 \pm 0.550$ & no & $0.19$ & $0.02$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy\_pooled & $0.10$ & $0.12$ & $-0.016 \pm 0.190$ & no & $0.07$ & $0.06$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy & $-0.16$ & $0.06$ & $-0.213 \pm 0.708$ & no & $0.19$ & $0.08$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy\_pooled & $0.02$ & $-0.01$ & $0.029 \pm 0.110$ & no & $0.08$ & $0.06$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy & $-0.25$ & $-0.01$ & $-0.239 \pm 0.701$ & no & $0.24$ & $0.07$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy\_pooled & $-0.05$ & $-0.08$ & $0.033 \pm 0.102$ & no & $0.08$ & $0.06$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy & $-0.00$ & $0.00$ & $-0.006 \pm 0.005$ & yes & $0.31$ & $0.22$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy\_pooled & $0.00$ & $0.00$ & $-0.001 \pm 0.012$ & no & $0.11$ & $0.10$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy & $-0.00$ & $0.01$ & $-0.011 \pm 0.008$ & yes & $0.35$ & $0.25$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy\_pooled & $0.01$ & $0.01$ & $-0.005 \pm 0.014$ & no & $0.07$ & $0.17$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy & $0.00$ & $0.01$ & $-0.004 \pm 0.010$ & no & $0.23$ & $0.18$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy\_pooled & $0.01$ & $0.01$ & $-0.003 \pm 0.015$ & no & $0.09$ & $0.07$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy & $0.01$ & $0.02$ & $-0.007 \pm 0.014$ & no & $0.24$ & $0.21$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy\_pooled & $0.02$ & $0.02$ & $0.000 \pm 0.024$ & no & $0.10$ & $0.13$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy & $0.02$ & $-0.00$ & $0.022 \pm 0.148$ & no & $0.06$ & $0.10$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy\_pooled & $0.00$ & $0.00$ & $-0.000 \pm 0.048$ & no & $0.09$ & $0.04$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy & $0.01$ & $-0.01$ & $0.019 \pm 0.145$ & no & $0.22$ & $0.07$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy\_pooled & $-0.01$ & $-0.00$ & $-0.005 \pm 0.052$ & no & $0.07$ & $0.13$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy & $-0.31$ & $0.12$ & $-0.433 \pm 0.411$ & yes & $0.08$ & $0.10$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy\_pooled & $0.04$ & $0.02$ & $0.013 \pm 0.178$ & no & $0.06$ & $0.08$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy & $-0.22$ & $0.29$ & $-0.513 \pm 0.379$ & yes & $0.16$ & $0.04$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy\_pooled & $0.15$ & $0.23$ & $-0.079 \pm 0.060$ & yes & $0.09$ & $0.05$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy & $-0.24$ & $0.06$ & $-0.291 \pm 0.450$ & no & $0.11$ & $0.14$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy\_pooled & $-0.01$ & $-0.01$ & $0.002 \pm 0.134$ & no & $0.10$ & $0.10$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy & $-0.11$ & $0.24$ & $-0.349 \pm 0.445$ & no & $0.19$ & $0.01$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy\_pooled & $0.18$ & $0.17$ & $0.005 \pm 0.097$ & no & $0.06$ & $0.06$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy & $-0.13$ & $0.04$ & $-0.170 \pm 0.370$ & no & $0.09$ & $0.07$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy\_pooled & $0.01$ & $-0.02$ & $0.029 \pm 0.117$ & no & $0.06$ & $0.07$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy & $-0.13$ & $0.06$ & $-0.184 \pm 0.368$ & no & $0.15$ & $0.10$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy\_pooled & $0.04$ & $-0.01$ & $0.048 \pm 0.051$ & no & $0.11$ & $0.10$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy & $-0.02$ & $-0.02$ & $-0.005 \pm 0.016$ & no & $0.29$ & $0.24$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy\_pooled & $-0.04$ & $-0.03$ & $-0.017 \pm 0.019$ & no & $0.14$ & $0.13$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy & $-0.02$ & $-0.01$ & $-0.004 \pm 0.016$ & no & $0.33$ & $0.27$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy\_pooled & $-0.03$ & $-0.01$ & $-0.018 \pm 0.024$ & no & $0.09$ & $0.20$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy & $-0.01$ & $-0.01$ & $-0.006 \pm 0.022$ & no & $0.21$ & $0.20$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy\_pooled & $-0.02$ & $-0.01$ & $-0.005 \pm 0.033$ & no & $0.11$ & $0.10$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy & $-0.01$ & $-0.00$ & $-0.006 \pm 0.023$ & no & $0.22$ & $0.24$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy\_pooled & $-0.01$ & $-0.01$ & $-0.000 \pm 0.029$ & no & $0.12$ & $0.16$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy & $-0.04$ & $-0.03$ & $-0.009 \pm 0.066$ & no & $0.03$ & $0.14$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy\_pooled & $-0.04$ & $-0.03$ & $-0.008 \pm 0.016$ & no & $0.12$ & $0.09$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy & $-0.04$ & $-0.04$ & $-0.000 \pm 0.050$ & no & $0.19$ & $0.01$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy\_pooled & $-0.04$ & $-0.04$ & $-0.006 \pm 0.042$ & no & $0.03$ & $0.07$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy & $-0.37$ & $0.08$ & $-0.452 \pm 0.551$ & no & $0.15$ & $0.14$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy\_pooled & $0.01$ & $0.00$ & $0.013 \pm 0.230$ & no & $0.12$ & $0.12$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy & $-0.32$ & $0.20$ & $-0.525 \pm 0.506$ & yes & $0.17$ & $0.06$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy\_pooled & $0.05$ & $0.15$ & $-0.092 \pm 0.056$ & yes & $0.08$ & $0.07$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy & $-0.32$ & $0.04$ & $-0.357 \pm 0.462$ & no & $0.14$ & $0.14$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy\_pooled & $-0.04$ & $-0.04$ & $-0.005 \pm 0.155$ & no & $0.13$ & $0.12$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy & $-0.23$ & $0.17$ & $-0.398 \pm 0.458$ & no & $0.14$ & $0.06$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy\_pooled & $0.08$ & $0.10$ & $-0.019 \pm 0.161$ & no & $0.05$ & $0.05$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy & $-0.12$ & $-0.02$ & $-0.092 \pm 0.540$ & no & $0.18$ & $0.10$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy\_pooled & $-0.02$ & $-0.06$ & $0.038 \pm 0.129$ & no & $0.11$ & $0.10$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy & $-0.21$ & $-0.10$ & $-0.108 \pm 0.533$ & no & $0.19$ & $0.02$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy\_pooled & $-0.12$ & $-0.13$ & $0.013 \pm 0.035$ & no & $0.07$ & $0.06$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy & $0.02$ & $0.05$ & $-0.025 \pm 0.011$ & yes & $0.35$ & $0.17$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy\_pooled & $0.07$ & $0.07$ & $0.002 \pm 0.018$ & no & $0.06$ & $0.05$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy & $0.03$ & $0.05$ & $-0.023 \pm 0.004$ & yes & $0.37$ & $0.21$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy\_pooled & $0.09$ & $0.07$ & $0.020 \pm 0.012$ & yes & $0.01$ & $0.12$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy & $0.04$ & $0.05$ & $-0.008 \pm 0.003$ & yes & $0.28$ & $0.12$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy\_pooled & $0.06$ & $0.06$ & $-0.007 \pm 0.016$ & no & $0.04$ & $0.02$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy & $0.05$ & $0.05$ & $-0.000 \pm 0.005$ & no & $0.27$ & $0.18$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy\_pooled & $0.06$ & $0.06$ & $-0.001 \pm 0.015$ & no & $0.05$ & $0.09$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy & $0.09$ & $0.12$ & $-0.035 \pm 0.009$ & yes & $0.10$ & $0.04$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy\_pooled & $0.08$ & $0.12$ & $-0.041 \pm 0.025$ & yes & $0.01$ & $0.08$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy & $0.07$ & $0.12$ & $-0.044 \pm 0.020$ & yes & $0.26$ & $0.22$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy\_pooled & $0.08$ & $0.12$ & $-0.039 \pm 0.011$ & yes & $0.18$ & $0.25$ \\
+DistilGPT-2 & Client GA, upload & Loss thr. & primary & legacy & $-0.44$ & $0.16$ & $-0.595 \pm 0.165$ & yes & $0.14$ & $0.05$ \\
+DistilGPT-2 & Client GA, upload & Loss thr. & primary & legacy\_pooled & $0.02$ & $0.01$ & $0.012 \pm 0.080$ & no & $0.08$ & $0.07$ \\
+DistilGPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy & $-0.45$ & $0.24$ & $-0.690 \pm 0.164$ & yes & $0.15$ & $0.02$ \\
+DistilGPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy\_pooled & $0.01$ & $0.14$ & $-0.137 \pm 0.025$ & yes & $0.05$ & $0.05$ \\
+DistilGPT-2 & Client GA, upload & Min-K\% & primary & legacy & $-0.38$ & $0.11$ & $-0.488 \pm 0.182$ & yes & $0.16$ & $0.08$ \\
+DistilGPT-2 & Client GA, upload & Min-K\% & primary & legacy\_pooled & $-0.04$ & $-0.02$ & $-0.023 \pm 0.025$ & no & $0.12$ & $0.09$ \\
+DistilGPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy & $-0.32$ & $0.21$ & $-0.533 \pm 0.191$ & yes & $0.16$ & $0.00$ \\
+DistilGPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy\_pooled & $0.09$ & $0.10$ & $-0.009 \pm 0.044$ & no & $0.03$ & $0.05$ \\
+DistilGPT-2 & Client GA, upload & Ref.-calib. & primary & legacy & $-0.24$ & $0.08$ & $-0.321 \pm 0.142$ & yes & $0.18$ & $0.05$ \\
+DistilGPT-2 & Client GA, upload & Ref.-calib. & primary & legacy\_pooled & $-0.01$ & $-0.02$ & $0.015 \pm 0.089$ & no & $0.07$ & $0.05$ \\
+DistilGPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy & $-0.34$ & $-0.01$ & $-0.326 \pm 0.159$ & yes & $0.17$ & $0.07$ \\
+DistilGPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy\_pooled & $-0.10$ & $-0.10$ & $0.004 \pm 0.032$ & no & $0.04$ & $0.04$ \\
+DistilGPT-2 & Client GA, global & Loss thr. & primary & legacy & $-0.02$ & $-0.01$ & $-0.012 \pm 0.017$ & no & $0.29$ & $0.22$ \\
+DistilGPT-2 & Client GA, global & Loss thr. & primary & legacy\_pooled & $-0.01$ & $-0.02$ & $0.005 \pm 0.013$ & no & $0.12$ & $0.10$ \\
+DistilGPT-2 & Client GA, global & Loss thr. & holdout10 & legacy & $-0.03$ & $-0.01$ & $-0.022 \pm 0.029$ & no & $0.33$ & $0.26$ \\
+DistilGPT-2 & Client GA, global & Loss thr. & holdout10 & legacy\_pooled & $-0.02$ & $-0.01$ & $-0.012 \pm 0.032$ & no & $0.06$ & $0.18$ \\
+DistilGPT-2 & Client GA, global & Min-K\% & primary & legacy & $-0.03$ & $-0.00$ & $-0.024 \pm 0.034$ & no & $0.21$ & $0.18$ \\
+DistilGPT-2 & Client GA, global & Min-K\% & primary & legacy\_pooled & $-0.01$ & $-0.01$ & $-0.001 \pm 0.023$ & no & $0.09$ & $0.08$ \\
+DistilGPT-2 & Client GA, global & Min-K\% & holdout10 & legacy & $-0.02$ & $0.01$ & $-0.029 \pm 0.049$ & no & $0.22$ & $0.20$ \\
+DistilGPT-2 & Client GA, global & Min-K\% & holdout10 & legacy\_pooled & $-0.00$ & $0.01$ & $-0.012 \pm 0.029$ & no & $0.10$ & $0.12$ \\
+DistilGPT-2 & Client GA, global & Ref.-calib. & primary & legacy & $-0.01$ & $-0.04$ & $0.025 \pm 0.034$ & no & $0.05$ & $0.12$ \\
+DistilGPT-2 & Client GA, global & Ref.-calib. & primary & legacy\_pooled & $-0.03$ & $-0.03$ & $0.003 \pm 0.012$ & no & $0.09$ & $0.06$ \\
+DistilGPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy & $-0.03$ & $-0.06$ & $0.028 \pm 0.042$ & no & $0.18$ & $0.04$ \\
+DistilGPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy\_pooled & $-0.05$ & $-0.05$ & $0.001 \pm 0.032$ & no & $0.04$ & $0.08$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy & $-0.43$ & $0.14$ & $-0.576 \pm 0.158$ & yes & $0.12$ & $0.07$ \\
+GPT-2 & Client GA, upload & Loss thr. & primary & legacy\_pooled & $0.05$ & $0.00$ & $0.052 \pm 0.127$ & no & $0.07$ & $0.10$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy & $-0.43$ & $0.24$ & $-0.669 \pm 0.149$ & yes & $0.13$ & $0.04$ \\
+GPT-2 & Client GA, upload & Loss thr. & holdout10 & legacy\_pooled & $0.06$ & $0.15$ & $-0.088 \pm 0.077$ & yes & $0.07$ & $0.05$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy & $-0.36$ & $0.09$ & $-0.448 \pm 0.191$ & yes & $0.15$ & $0.10$ \\
+GPT-2 & Client GA, upload & Min-K\% & primary & legacy\_pooled & $0.00$ & $-0.03$ & $0.033 \pm 0.055$ & no & $0.10$ & $0.11$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy & $-0.30$ & $0.21$ & $-0.503 \pm 0.191$ & yes & $0.16$ & $0.03$ \\
+GPT-2 & Client GA, upload & Min-K\% & holdout10 & legacy\_pooled & $0.11$ & $0.10$ & $0.014 \pm 0.092$ & no & $0.06$ & $0.08$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy & $-0.22$ & $0.06$ & $-0.281 \pm 0.144$ & yes & $0.18$ & $0.05$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & primary & legacy\_pooled & $0.03$ & $-0.04$ & $0.076 \pm 0.094$ & no & $0.06$ & $0.08$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy & $-0.32$ & $-0.02$ & $-0.303 \pm 0.151$ & yes & $0.15$ & $0.06$ \\
+GPT-2 & Client GA, upload & Ref.-calib. & holdout10 & legacy\_pooled & $-0.06$ & $-0.11$ & $0.046 \pm 0.062$ & no & $0.06$ & $0.04$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy & $-0.00$ & $0.01$ & $-0.012 \pm 0.005$ & yes & $0.31$ & $0.20$ \\
+GPT-2 & Client GA, global & Loss thr. & primary & legacy\_pooled & $0.00$ & $0.01$ & $-0.007 \pm 0.019$ & no & $0.12$ & $0.08$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy & $-0.00$ & $0.01$ & $-0.017 \pm 0.008$ & yes & $0.35$ & $0.24$ \\
+GPT-2 & Client GA, global & Loss thr. & holdout10 & legacy\_pooled & $0.01$ & $0.02$ & $-0.013 \pm 0.018$ & no & $0.06$ & $0.17$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy & $0.00$ & $0.01$ & $-0.010 \pm 0.013$ & no & $0.23$ & $0.17$ \\
+GPT-2 & Client GA, global & Min-K\% & primary & legacy\_pooled & $0.01$ & $0.02$ & $-0.009 \pm 0.012$ & no & $0.10$ & $0.06$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy & $0.01$ & $0.02$ & $-0.007 \pm 0.019$ & no & $0.24$ & $0.21$ \\
+GPT-2 & Client GA, global & Min-K\% & holdout10 & legacy\_pooled & $0.02$ & $0.02$ & $-0.003 \pm 0.008$ & no & $0.10$ & $0.13$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy & $0.02$ & $0.01$ & $0.014 \pm 0.037$ & no & $0.06$ & $0.08$ \\
+GPT-2 & Client GA, global & Ref.-calib. & primary & legacy\_pooled & $0.00$ & $0.01$ & $-0.010 \pm 0.017$ & no & $0.09$ & $0.03$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy & $0.01$ & $-0.00$ & $0.014 \pm 0.039$ & no & $0.22$ & $0.07$ \\
+GPT-2 & Client GA, global & Ref.-calib. & holdout10 & legacy\_pooled & $-0.01$ & $0.00$ & $-0.009 \pm 0.013$ & no & $0.07$ & $0.13$ \\
+GPT-2-medium & Client GA, upload & Loss thr. & primary & legacy & $-0.36$ & $0.19$ & $-0.551 \pm 0.250$ & yes & $0.15$ & $0.05$ \\
+GPT-2-medium & Client GA, upload & Loss thr. & primary & legacy\_pooled & $0.13$ & $0.08$ & $0.055 \pm 0.085$ & no & $0.04$ & $0.04$ \\
+GPT-2-medium & Client GA, upload & Loss thr. & holdout10 & legacy & $-0.37$ & $0.28$ & $-0.649 \pm 0.268$ & yes & $0.18$ & $0.02$ \\
+GPT-2-medium & Client GA, upload & Loss thr. & holdout10 & legacy\_pooled & $0.11$ & $0.21$ & $-0.101 \pm 0.053$ & yes & $0.06$ & $0.04$ \\
+GPT-2-medium & Client GA, upload & Min-K\% & primary & legacy & $-0.27$ & $0.14$ & $-0.412 \pm 0.249$ & yes & $0.14$ & $0.08$ \\
+GPT-2-medium & Client GA, upload & Min-K\% & primary & legacy\_pooled & $0.07$ & $0.05$ & $0.020 \pm 0.076$ & no & $0.09$ & $0.06$ \\
+GPT-2-medium & Client GA, upload & Min-K\% & holdout10 & legacy & $-0.21$ & $0.27$ & $-0.478 \pm 0.265$ & yes & $0.18$ & $0.01$ \\
+GPT-2-medium & Client GA, upload & Min-K\% & holdout10 & legacy\_pooled & $0.11$ & $0.21$ & $-0.099 \pm 0.053$ & yes & $0.05$ & $0.04$ \\
+GPT-2-medium & Client GA, upload & Ref.-calib. & primary & legacy & $-0.14$ & $0.09$ & $-0.222 \pm 0.260$ & no & $0.16$ & $0.04$ \\
+GPT-2-medium & Client GA, upload & Ref.-calib. & primary & legacy\_pooled & $0.06$ & $0.01$ & $0.049 \pm 0.052$ & no & $0.03$ & $0.03$ \\
+GPT-2-medium & Client GA, upload & Ref.-calib. & holdout10 & legacy & $-0.25$ & $-0.01$ & $-0.247 \pm 0.286$ & no & $0.19$ & $0.06$ \\
+GPT-2-medium & Client GA, upload & Ref.-calib. & holdout10 & legacy\_pooled & $-0.10$ & $-0.05$ & $-0.047 \pm 0.047$ & yes & $0.06$ & $0.04$ \\
+GPT-2-medium & Client GA, global & Loss thr. & primary & legacy & $0.03$ & $0.05$ & $-0.025 \pm 0.009$ & yes & $0.33$ & $0.17$ \\
+GPT-2-medium & Client GA, global & Loss thr. & primary & legacy\_pooled & $0.07$ & $0.07$ & $-0.006 \pm 0.011$ & no & $0.10$ & $0.05$ \\
+GPT-2-medium & Client GA, global & Loss thr. & holdout10 & legacy & $0.03$ & $0.06$ & $-0.029 \pm 0.011$ & yes & $0.36$ & $0.22$ \\
+GPT-2-medium & Client GA, global & Loss thr. & holdout10 & legacy\_pooled & $0.07$ & $0.08$ & $-0.004 \pm 0.012$ & no & $0.03$ & $0.14$ \\
+GPT-2-medium & Client GA, global & Min-K\% & primary & legacy & $0.04$ & $0.05$ & $-0.011 \pm 0.009$ & yes & $0.25$ & $0.16$ \\
+GPT-2-medium & Client GA, global & Min-K\% & primary & legacy\_pooled & $0.06$ & $0.07$ & $-0.009 \pm 0.016$ & no & $0.10$ & $0.05$ \\
+GPT-2-medium & Client GA, global & Min-K\% & holdout10 & legacy & $0.04$ & $0.06$ & $-0.011 \pm 0.013$ & no & $0.27$ & $0.21$ \\
+GPT-2-medium & Client GA, global & Min-K\% & holdout10 & legacy\_pooled & $0.06$ & $0.07$ & $-0.009 \pm 0.016$ & no & $0.06$ & $0.13$ \\
+GPT-2-medium & Client GA, global & Ref.-calib. & primary & legacy & $0.06$ & $0.11$ & $-0.045 \pm 0.016$ & yes & $0.10$ & $0.03$ \\
+GPT-2-medium & Client GA, global & Ref.-calib. & primary & legacy\_pooled & $0.06$ & $0.11$ & $-0.047 \pm 0.015$ & yes & $0.03$ & $0.07$ \\
+GPT-2-medium & Client GA, global & Ref.-calib. & holdout10 & legacy & $0.05$ & $0.11$ & $-0.055 \pm 0.016$ & yes & $0.25$ & $0.18$ \\
+GPT-2-medium & Client GA, global & Ref.-calib. & holdout10 & legacy\_pooled & $0.06$ & $0.11$ & $-0.048 \pm 0.015$ & yes & $0.19$ & $0.20$ \\
+\bottomrule
+\end{tabular*}
+
+\smallskip
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed.\par}
+\end{table*}

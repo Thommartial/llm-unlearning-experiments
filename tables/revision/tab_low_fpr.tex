@@ -1,0 +1,137 @@
+\begin{table*}[t]
+\centering
+\caption{TPR at 0.1\% FPR with scores pooled over seeds, its per-seed mean, and TPR at 1\% FPR within the base-difficulty strata (outlier forget vs outlier non-members), pooled the same way.}
+\label{tab:low-fpr}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllcccccc@{}}
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Attack} & \textbf{Non-members} & \textbf{Seeds} & \textbf{Negatives} & \textbf{\shortstack{TPR@0.1\%\\pooled}} & \textbf{\shortstack{TPR at zero\\false positives\\(400 non-members)}} & \textbf{\shortstack{TPR@1\%\\outlier}} & \textbf{\shortstack{TPR@1\%\\typical}} \\
+\midrule
+DistilGPT-2 & central & Retrain & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.003$ & $0.000$ & $0.013$ \\
+DistilGPT-2 & central & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.017$ & $0.029$ \\
+DistilGPT-2 & central & Retrain & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.001$ & $0.000$ & $0.008$ \\
+DistilGPT-2 & central & Retrain & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.006$ & $0.023$ \\
+DistilGPT-2 & central & GA & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.003 \pm 0.003$ & $0.006$ & $0.004$ \\
+DistilGPT-2 & central & GA & Loss thr. & holdout10 & 5 & 2000 & $0.002$ & $0.025 \pm 0.022$ & $0.006$ & $0.009$ \\
+DistilGPT-2 & central & GA & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.002 \pm 0.001$ & $0.009$ & $0.004$ \\
+DistilGPT-2 & central & GA & Min-K\% & holdout10 & 5 & 2000 & $0.003$ & $0.001 \pm 0.003$ & $0.005$ & $0.014$ \\
+DistilGPT-2 & central & GD & Loss thr. & primary & 5 & 2000 & $0.001$ & $0.000 \pm 0.000$ & $0.000$ & $0.004$ \\
+DistilGPT-2 & central & GD & Loss thr. & holdout10 & 5 & 2000 & $0.002$ & $0.002 \pm 0.003$ & $0.016$ & $0.009$ \\
+DistilGPT-2 & central & GD & Min-K\% & primary & 5 & 2000 & $0.001$ & $0.001 \pm 0.001$ & $0.000$ & $0.004$ \\
+DistilGPT-2 & central & GD & Min-K\% & holdout10 & 5 & 2000 & $0.001$ & $0.002 \pm 0.002$ & $0.007$ & $0.006$ \\
+DistilGPT-2 & central & NPO & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.001$ & $0.000$ & $0.003$ \\
+DistilGPT-2 & central & NPO & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.005$ & $0.003$ \\
+DistilGPT-2 & central & NPO & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+DistilGPT-2 & central & NPO & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.006$ & $0.000$ \\
+GPT-2 & central & Retrain & Loss thr. & primary & 5 & 2000 & $0.004$ & $0.004 \pm 0.004$ & $0.000$ & $0.020$ \\
+GPT-2 & central & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.028$ & $0.033$ \\
+GPT-2 & central & Retrain & Min-K\% & primary & 5 & 2000 & $0.002$ & $0.003 \pm 0.003$ & $0.018$ & $0.010$ \\
+GPT-2 & central & Retrain & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.001$ & $0.032$ \\
+GPT-2 & central & GA & Loss thr. & primary & 5 & 2000 & $0.001$ & $0.003 \pm 0.003$ & $0.003$ & $0.004$ \\
+GPT-2 & central & GA & Loss thr. & holdout10 & 5 & 2000 & $0.002$ & $0.015 \pm 0.021$ & $0.028$ & $0.018$ \\
+GPT-2 & central & GA & Min-K\% & primary & 5 & 2000 & $0.001$ & $0.001 \pm 0.002$ & $0.003$ & $0.006$ \\
+GPT-2 & central & GA & Min-K\% & holdout10 & 5 & 2000 & $0.004$ & $0.007 \pm 0.013$ & $0.016$ & $0.028$ \\
+GPT-2 & central & GD & Loss thr. & primary & 5 & 2000 & $0.002$ & $0.002 \pm 0.004$ & $0.000$ & $0.007$ \\
+GPT-2 & central & GD & Loss thr. & holdout10 & 5 & 2000 & $0.001$ & $0.002 \pm 0.003$ & $0.014$ & $0.013$ \\
+GPT-2 & central & GD & Min-K\% & primary & 5 & 2000 & $0.002$ & $0.001 \pm 0.003$ & $0.003$ & $0.006$ \\
+GPT-2 & central & GD & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.001 \pm 0.003$ & $0.015$ & $0.009$ \\
+GPT-2 & central & NPO & Loss thr. & primary & 5 & 2000 & $0.002$ & $0.001 \pm 0.001$ & $0.000$ & $0.009$ \\
+GPT-2 & central & NPO & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.001 \pm 0.003$ & $0.004$ & $0.009$ \\
+GPT-2 & central & NPO & Min-K\% & primary & 5 & 2000 & $0.001$ & $0.001 \pm 0.001$ & $0.002$ & $0.004$ \\
+GPT-2 & central & NPO & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.011$ & $0.004$ \\
+GPT-2-medium & central & Retrain & Loss thr. & primary & 5 & 2000 & $0.004$ & $0.003 \pm 0.003$ & $0.000$ & $0.017$ \\
+GPT-2-medium & central & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.004$ & $0.004 \pm 0.003$ & $0.018$ & $0.029$ \\
+GPT-2-medium & central & Retrain & Min-K\% & primary & 5 & 2000 & $0.004$ & $0.003 \pm 0.003$ & $0.000$ & $0.014$ \\
+GPT-2-medium & central & Retrain & Min-K\% & holdout10 & 5 & 2000 & $0.004$ & $0.004 \pm 0.003$ & $0.000$ & $0.030$ \\
+GPT-2-medium & central & GA & Loss thr. & primary & 5 & 2000 & $0.001$ & $0.001 \pm 0.001$ & $0.015$ & $0.010$ \\
+GPT-2-medium & central & GA & Loss thr. & holdout10 & 5 & 2000 & $0.003$ & $0.009 \pm 0.012$ & $0.040$ & $0.032$ \\
+GPT-2-medium & central & GA & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.002$ & $0.012$ & $0.008$ \\
+GPT-2-medium & central & GA & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.002 \pm 0.004$ & $0.030$ & $0.012$ \\
+GPT-2-medium & central & GD & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & GD & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & GD & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.001$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & GD & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & NPO & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & NPO & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & NPO & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2-medium & central & NPO & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2 & by\_author\_K5 & Retrain & Loss thr. & primary & 3 & 1200 & $0.003$ & $0.003 \pm 0.004$ & $0.000$ & $0.011$ \\
+GPT-2 & by\_author\_K5 & Retrain & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.031$ & $0.030$ \\
+GPT-2 & by\_author\_K5 & Retrain & Min-K\% & primary & 3 & 1200 & $0.003$ & $0.003 \pm 0.000$ & $0.008$ & $0.007$ \\
+GPT-2 & by\_author\_K5 & Retrain & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.026$ \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Loss thr. & primary & 3 & 1200 & $0.000$ & $0.001 \pm 0.004$ & $0.000$ & $0.002$ \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Loss thr. & holdout10 & 3 & 1200 & $0.003$ & $0.014 \pm 0.045$ & $0.002$ & $0.014$ \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Min-K\% & primary & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.003$ & $0.002$ \\
+GPT-2 & by\_author\_K5 & Client GA, upload & Min-K\% & holdout10 & 3 & 1200 & $0.003$ & $0.003 \pm 0.011$ & $0.010$ & $0.013$ \\
+GPT-2 & by\_author\_K5 & Client GA, global & Loss thr. & primary & 3 & 1200 & $0.002$ & $0.002 \pm 0.004$ & $0.000$ & $0.015$ \\
+GPT-2 & by\_author\_K5 & Client GA, global & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.035$ & $0.032$ \\
+GPT-2 & by\_author\_K5 & Client GA, global & Min-K\% & primary & 3 & 1200 & $0.001$ & $0.001 \pm 0.004$ & $0.015$ & $0.011$ \\
+GPT-2 & by\_author\_K5 & Client GA, global & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.008$ & $0.025$ \\
+GPT-2 & iid\_K3 & Retrain & Loss thr. & primary & 3 & 1200 & $0.003$ & $0.003 \pm 0.004$ & $0.000$ & $0.021$ \\
+GPT-2 & iid\_K3 & Retrain & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.033$ & $0.033$ \\
+GPT-2 & iid\_K3 & Retrain & Min-K\% & primary & 3 & 1200 & $0.003$ & $0.003 \pm 0.004$ & $0.008$ & $0.011$ \\
+GPT-2 & iid\_K3 & Retrain & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.002$ & $0.032$ \\
+GPT-2 & iid\_K3 & Client GA, upload & Loss thr. & primary & 3 & 1200 & $0.002$ & $0.001 \pm 0.004$ & $0.000$ & $0.005$ \\
+GPT-2 & iid\_K3 & Client GA, upload & Loss thr. & holdout10 & 3 & 1200 & $0.001$ & $0.005 \pm 0.006$ & $0.043$ & $0.006$ \\
+GPT-2 & iid\_K3 & Client GA, upload & Min-K\% & primary & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.003$ & $0.005$ \\
+GPT-2 & iid\_K3 & Client GA, upload & Min-K\% & holdout10 & 3 & 1200 & $0.002$ & $0.002 \pm 0.004$ & $0.022$ & $0.028$ \\
+GPT-2 & iid\_K3 & Client GA, global & Loss thr. & primary & 3 & 1200 & $0.002$ & $0.002 \pm 0.004$ & $0.000$ & $0.012$ \\
+GPT-2 & iid\_K3 & Client GA, global & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.001 \pm 0.004$ & $0.033$ & $0.029$ \\
+GPT-2 & iid\_K3 & Client GA, global & Min-K\% & primary & 3 & 1200 & $0.003$ & $0.003 \pm 0.006$ & $0.008$ & $0.014$ \\
+GPT-2 & iid\_K3 & Client GA, global & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.001 \pm 0.004$ & $0.008$ & $0.026$ \\
+GPT-2 & iid\_K10 & Retrain & Loss thr. & primary & 3 & 1200 & $0.005$ & $0.003 \pm 0.007$ & $0.000$ & $0.014$ \\
+GPT-2 & iid\_K10 & Retrain & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.024$ & $0.026$ \\
+GPT-2 & iid\_K10 & Retrain & Min-K\% & primary & 3 & 1200 & $0.005$ & $0.003 \pm 0.007$ & $0.003$ & $0.011$ \\
+GPT-2 & iid\_K10 & Retrain & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.023$ \\
+GPT-2 & iid\_K10 & Client GA, upload & Loss thr. & primary & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.001$ \\
+GPT-2 & iid\_K10 & Client GA, upload & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.001 \pm 0.004$ & $0.008$ & $0.009$ \\
+GPT-2 & iid\_K10 & Client GA, upload & Min-K\% & primary & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.000$ \\
+GPT-2 & iid\_K10 & Client GA, upload & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.008$ & $0.007$ \\
+GPT-2 & iid\_K10 & Client GA, global & Loss thr. & primary & 3 & 1200 & $0.005$ & $0.004 \pm 0.004$ & $0.000$ & $0.021$ \\
+GPT-2 & iid\_K10 & Client GA, global & Loss thr. & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.043$ & $0.030$ \\
+GPT-2 & iid\_K10 & Client GA, global & Min-K\% & primary & 3 & 1200 & $0.005$ & $0.003 \pm 0.007$ & $0.003$ & $0.016$ \\
+GPT-2 & iid\_K10 & Client GA, global & Min-K\% & holdout10 & 3 & 1200 & $0.000$ & $0.000 \pm 0.000$ & $0.006$ & $0.033$ \\
+DistilGPT-2 & iid\_K5 & Retrain & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.003$ & $0.000$ & $0.009$ \\
+DistilGPT-2 & iid\_K5 & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.012$ & $0.021$ \\
+DistilGPT-2 & iid\_K5 & Retrain & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.001$ & $0.000$ & $0.004$ \\
+DistilGPT-2 & iid\_K5 & Retrain & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.006$ & $0.015$ \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Loss thr. & primary & 5 & 2000 & $0.002$ & $0.004 \pm 0.006$ & $0.006$ & $0.005$ \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & 5 & 2000 & $0.002$ & $0.007 \pm 0.005$ & $0.004$ & $0.012$ \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Min-K\% & primary & 5 & 2000 & $0.002$ & $0.001 \pm 0.001$ & $0.003$ & $0.010$ \\
+DistilGPT-2 & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & 5 & 2000 & $0.004$ & $0.004 \pm 0.005$ & $0.007$ & $0.013$ \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Loss thr. & primary & 5 & 2000 & $0.000$ & $0.003 \pm 0.003$ & $0.002$ & $0.007$ \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Loss thr. & holdout10 & 5 & 2000 & $0.001$ & $0.001 \pm 0.002$ & $0.012$ & $0.016$ \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.001 \pm 0.003$ & $0.005$ & $0.005$ \\
+DistilGPT-2 & iid\_K5 & Client GA, global & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.008$ & $0.009$ \\
+GPT-2 & iid\_K5 & Retrain & Loss thr. & primary & 5 & 2000 & $0.002$ & $0.003 \pm 0.003$ & $0.000$ & $0.012$ \\
+GPT-2 & iid\_K5 & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.029$ & $0.030$ \\
+GPT-2 & iid\_K5 & Retrain & Min-K\% & primary & 5 & 2000 & $0.001$ & $0.002 \pm 0.003$ & $0.014$ & $0.010$ \\
+GPT-2 & iid\_K5 & Retrain & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.000$ & $0.026$ \\
+GPT-2 & iid\_K5 & Client GA, upload & Loss thr. & primary & 5 & 2000 & $0.001$ & $0.002 \pm 0.002$ & $0.003$ & $0.006$ \\
+GPT-2 & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & 5 & 2000 & $0.002$ & $0.004 \pm 0.004$ & $0.028$ & $0.014$ \\
+GPT-2 & iid\_K5 & Client GA, upload & Min-K\% & primary & 5 & 2000 & $0.001$ & $0.000 \pm 0.000$ & $0.003$ & $0.005$ \\
+GPT-2 & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & 5 & 2000 & $0.005$ & $0.003 \pm 0.004$ & $0.018$ & $0.026$ \\
+GPT-2 & iid\_K5 & Client GA, global & Loss thr. & primary & 5 & 2000 & $0.002$ & $0.001 \pm 0.002$ & $0.000$ & $0.011$ \\
+GPT-2 & iid\_K5 & Client GA, global & Loss thr. & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.027$ & $0.028$ \\
+GPT-2 & iid\_K5 & Client GA, global & Min-K\% & primary & 5 & 2000 & $0.002$ & $0.001 \pm 0.002$ & $0.018$ & $0.010$ \\
+GPT-2 & iid\_K5 & Client GA, global & Min-K\% & holdout10 & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.004$ & $0.019$ \\
+GPT-2-medium & iid\_K5 & Retrain & Loss thr. & primary & 5 & 2000 & $0.003$ & $0.004 \pm 0.003$ & $0.000$ & $0.015$ \\
+GPT-2-medium & iid\_K5 & Retrain & Loss thr. & holdout10 & 5 & 2000 & $0.002$ & $0.002 \pm 0.001$ & $0.024$ & $0.030$ \\
+GPT-2-medium & iid\_K5 & Retrain & Min-K\% & primary & 5 & 2000 & $0.003$ & $0.003 \pm 0.003$ & $0.006$ & $0.015$ \\
+GPT-2-medium & iid\_K5 & Retrain & Min-K\% & holdout10 & 5 & 2000 & $0.002$ & $0.002 \pm 0.001$ & $0.000$ & $0.027$ \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Loss thr. & primary & 5 & 2000 & $0.002$ & $0.001 \pm 0.002$ & $0.021$ & $0.010$ \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Loss thr. & holdout10 & 5 & 2000 & $0.001$ & $0.004 \pm 0.006$ & $0.037$ & $0.027$ \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Min-K\% & primary & 5 & 2000 & $0.000$ & $0.000 \pm 0.000$ & $0.009$ & $0.002$ \\
+GPT-2-medium & iid\_K5 & Client GA, upload & Min-K\% & holdout10 & 5 & 2000 & $0.001$ & $0.003 \pm 0.004$ & $0.037$ & $0.017$ \\
+GPT-2-medium & iid\_K5 & Client GA, global & Loss thr. & primary & 5 & 2000 & $0.003$ & $0.003 \pm 0.001$ & $0.000$ & $0.015$ \\
+GPT-2-medium & iid\_K5 & Client GA, global & Loss thr. & holdout10 & 5 & 2000 & $0.003$ & $0.003 \pm 0.004$ & $0.030$ & $0.033$ \\
+GPT-2-medium & iid\_K5 & Client GA, global & Min-K\% & primary & 5 & 2000 & $0.003$ & $0.003 \pm 0.001$ & $0.004$ & $0.014$ \\
+GPT-2-medium & iid\_K5 & Client GA, global & Min-K\% & holdout10 & 5 & 2000 & $0.003$ & $0.003 \pm 0.004$ & $0.001$ & $0.026$ \\
+\bottomrule
+\end{tabular*}
+
+\smallskip
+{\footnotesize Pooling puts runs with different models on one threshold; with 2,000 negatives, 0.1\% FPR corresponds to 2 false positives. TPR at zero false positives (400 non-members): the per-seed TPR@0.1\%, which allows no false positive at that size, as mean and t-interval over seeds (no pooling).\par}
+\end{table*}

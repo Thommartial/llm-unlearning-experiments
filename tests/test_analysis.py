@@ -137,6 +137,36 @@ def test_h1_h2_h3(results):
     assert r["adv_outlier"] == 0.2 and set(h3["definition"]) == {"basediff"}  # only the columns present
 
 
+def test_h1_two_sided_distance_per_seed():
+    """|AUC - AUC_retrain| per seed: gaps of either sign count as distance; H1 keeps the signed gap."""
+    gaps = [-0.30, -0.10, 0.05, -0.20, 0.15]
+    rows = []
+    for seed, gap in enumerate(gaps):
+        for method, g, fq in (("retrain", 0.0, 1.0), ("npo", gap, 0.01 * (seed + 1))):
+            rows.append(_row(model="gpt2", seed=seed, method=method, gap_post=g, forget_quality_post=fq,
+                             gap_post_typical_basediff=g / 2, gap_post_outlier_basediff=-abs(g)))
+        rows.append(_row(campaign="fed_iid", kind="federated", variant="iid_K5", model="gpt2", seed=seed,
+                         method="client_ga_upload", gap_post=-gap, forget_quality_post=None))
+    df = analysis._prepare(pd.DataFrame(rows))
+    h = analysis.h1_two_sided(df)
+    assert "retrain" not in set(h["method"])
+    r = h[(h["kind"] == "central") & (h["stratum"] == "all")].iloc[0]
+    want = analysis.t_ci(np.abs(gaps))
+    assert r["mean"] == pytest.approx(0.16) and r["half"] == pytest.approx(want["half"]) and r["n"] == 5
+    assert r["gap_mean"] == pytest.approx(np.mean(gaps)) and r["n_below_retrain"] == 3
+    assert r["forget_quality_mean"] == pytest.approx(0.03) and r["role"] == "overall"
+    typ = h[(h["kind"] == "central") & (h["stratum"] == "typical_basediff")].iloc[0]
+    out = h[(h["kind"] == "central") & (h["stratum"] == "outlier_basediff")].iloc[0]
+    assert typ["mean"] == pytest.approx(0.08) and typ["role"] == "primary"
+    assert out["mean"] == pytest.approx(0.16) and out["n_below_retrain"] == 5
+    assert set(h["stratum"]) == {"all", "typical_basediff", "outlier_basediff"}  # only the columns present
+    fed = h[(h["kind"] == "federated") & (h["stratum"] == "all")].iloc[0]
+    assert fed["mean"] == pytest.approx(0.16) and fed["n_below_retrain"] == 2 and np.isnan(fed["forget_quality_mean"])
+    h1 = analysis.h1(df)  # the pre-registered one-sided H1 is unchanged: signed mean, CI includes 0
+    r = h1[h1["kind"] == "central"].iloc[0]
+    assert r["mean"] == pytest.approx(np.mean(gaps)) and not r["excludes_zero"]
+
+
 def test_h2_slope_is_fitted_within_each_seed():
     x = np.log10([82e6, 124e6, 355e6])
     rows, want = [], []
@@ -249,6 +279,11 @@ def test_analyse_writes_tables_and_figures(results, tmp_path):
             "fig_rev_control.pdf", "fig_rev_costs.pdf"} <= figs
     assert all(p.exists() and p.with_suffix(".png").exists() for p in a["figures"])
     assert (tmp_path / "tab" / "h1.csv").exists()
+    two = pd.read_csv(tmp_path / "tab" / "h1_two_sided.csv")
+    assert set(two["kind"]) == {"central", "federated"} and (two["mean"] >= 0).all()
+    tex = (tmp_path / "tab" / "tab_h1_two_sided.tex").read_text()
+    assert "Exploratory (post hoc)" in tex and "\\label{tab:h1-two-sided}" in tex and "Forget quality" in tex
+    assert "tab_h1_two_sided.tex" in names
 
 
 def test_end_to_end_on_a_smoke_campaign(tmp_path):

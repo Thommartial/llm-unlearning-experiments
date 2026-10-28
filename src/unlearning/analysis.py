@@ -128,6 +128,30 @@ def h1(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
+def h1_two_sided(df: pd.DataFrame) -> pd.DataFrame:
+    """Exploratory, post hoc (ANALYSIS_PLAN §10): the two-sided distance
+    |AUC - AUC_retrain| per seed (|gap_post|; federated rows against the
+    federated retrain), overall and per stratum, with mean and CI over seeds.
+    Also the signed mean gap, the number of seeds below retrain and the TOFU
+    forget quality. H1 itself is unchanged."""
+    out = []
+    d = df[df["method"] != "retrain"]
+    strata = [("all", "", None)] + [(f"{part}_{defn}", f"_{part}_{defn}", defn)
+                                    for defn in DEFINITIONS for part in ("typical", "outlier")]
+    for keys, g in d.groupby(KEY + ["method", "attack", "nonmember"], sort=False):
+        fq = t_ci(g["forget_quality_post"]) if "forget_quality_post" in g else t_ci([])
+        for stratum, suffix, defn in strata:
+            col = f"gap_post{suffix}"
+            if col not in g or g[col].isna().all():
+                continue
+            s = t_ci(g[col].abs())
+            out.append({**dict(zip(KEY + ["method", "attack", "nonmember"], keys, strict=True)), "stratum": stratum,
+                        "definition": defn, "role": DEFINITIONS.get(defn, "overall"), **s,
+                        "gap_mean": t_ci(g[col])["mean"], "n_below_retrain": int((g[col] < 0).sum()),
+                        "forget_quality_mean": fq["mean"], "forget_quality_half": fq["half"]})
+    return pd.DataFrame(out)
+
+
 def h2(df: pd.DataFrame) -> pd.DataFrame:
     """H2 over the GPT-2 series (central): slope of gap_post on log10(parameters),
     fitted within each seed (the seeds share the non-member draw across models),
@@ -506,6 +530,25 @@ def write_tables(a: dict, out) -> list[Path]:
         save("tab_h1.tex", "H1: post-unlearning AUC minus the retrained model's AUC, paired by seed.", "tab:h1",
              [" & ".join(_b(h) for h in ("Model", "Run", "Method", "Attack", "Non-members", "Gap",
                                          "CI excludes 0"))], rows, ci_note, align="llllccc")
+    if not a["h1_two_sided"].empty:
+        h = a["h1_two_sided"]
+        rows = []
+        for keys, g in h.groupby(KEY + ["method", "attack", "nonmember"], sort=False):
+            cell = {r["stratum"]: r for r in g.to_dict("records")}
+            dist = [_fmt(cell[s]["mean"], cell[s]["half"], 3) if s in cell else "--"
+                    for s in ("all", "typical_basediff", "outlier_basediff")]
+            r = cell["all"]
+            rows.append([_model(keys[2]), _tex(keys[3]), METHOD_NAMES.get(keys[4], keys[4]), ATTACK_NAMES[keys[5]],
+                         _tex(keys[6]), *dist, f"{r['n_below_retrain']}/{r['n']}",
+                         _fmt(r["forget_quality_mean"], r["forget_quality_half"], 3)])
+        save("tab_h1_two_sided.tex", "Exploratory (post hoc): two-sided distance $|\\mathrm{AUC}-"
+             "\\mathrm{AUC}_{\\mathrm{retrain}}|$ to the retrained model of the same seed (federated: the "
+             "federated retrain), overall and per stratum, next to TOFU forget quality. Added after seeing the "
+             "GPT-2 results; H1 (Table~\\ref{tab:h1}) is the pre-registered one-sided test.", "tab:h1-two-sided",
+             [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Attack", "Non-members", "All", "Typical",
+                                         "Outlier", "Below", "Forget quality"))], rows,
+             ci_note + " Strata by base-model difficulty, stratum-matched. Below: seeds whose AUC is under the "
+             "retrained model's.", align="lllll" + "c" * 5)
     if not a["h2"].empty:
         models = [m for m in GPT2_PARAMS if f"{m}__gap_post" in a["h2"]]
         rows = []
@@ -792,7 +835,8 @@ def analyse(results, figures_dir, tables_dir) -> dict:
     if df.empty:
         raise SystemExit(f"no campaign CSVs in {results}")
     kinds = df.drop_duplicates("campaign").set_index("campaign")["kind"].to_dict()
-    a.update(h1=h1(df), h2=h2(df), h3=h3(df), low_fpr=pooled_low_fpr(df, a["scores"]),
+    a.update(h1=h1(df), h1_two_sided=h1_two_sided(df), h2=h2(df), h3=h3(df),
+             low_fpr=pooled_low_fpr(df, a["scores"]),
              update=update_attacks(df), control=random_control(df, a["scores"]), costs=costs(df),
              central_costs=central_costs(df), slowdown=pilot_slowdown(df, a["pilot"]),
              hyper=hyperparameters(a["configs"], kinds))
@@ -803,8 +847,8 @@ def analyse(results, figures_dir, tables_dir) -> dict:
                               "auc_grad_align_random", "forget_quality_post", "model_utility_post"])
     tables_dir = Path(tables_dir)
     tables_dir.mkdir(parents=True, exist_ok=True)
-    for name in ("summary", "h1", "h2", "h3", "low_fpr", "update", "control", "costs", "central_costs", "slowdown",
-                 "tofu", "mu_zero"):
+    for name in ("summary", "h1", "h1_two_sided", "h2", "h3", "low_fpr", "update", "control", "costs",
+                 "central_costs", "slowdown", "tofu", "mu_zero"):
         a[name].to_csv(tables_dir / f"{name}.csv", index=False)
     a["hyper"].to_csv(tables_dir / "hyperparameters.csv")
     a["tables"] = write_tables(a, tables_dir)

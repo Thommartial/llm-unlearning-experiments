@@ -1,0 +1,39 @@
+\begin{table*}[t]
+\centering
+\caption{Settings of each campaign, from the resolved configs.}
+\label{tab:hyperparameters}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llll@{}}
+\toprule
+\textbf{Setting} & \textbf{central} & \textbf{fed\_ext} & \textbf{fed\_iid} \\
+\midrule
+models & distilgpt2, gpt2, gpt2-medium & gpt2 & distilgpt2, gpt2, gpt2-medium \\
+seeds & 0, 1, 2, 3, 4 & 0, 1, 2 & 0, 1, 2, 3, 4 \\
+model.precision & "fp16\_amp" & "fp16\_amp" & "fp16\_amp" \\
+model.lora & null & null & null \\
+data.max\_length & 128 & 128 & 128 \\
+data.max\_samples & null & null & null \\
+data.outlier\_fraction & 0.3 & 0.3 & 0.3 \\
+data.max\_new\_tokens & 128 & 128 & 128 \\
+unlearn.finetune\_epochs & 3 & 3 & 3 \\
+unlearn.finetune\_lr & 2e-05 & 2e-05 & 2e-05 \\
+unlearn.train\_batch\_size & 16 & 16 & 16 \\
+unlearn.epochs & 2 & 2 & 2 \\
+unlearn.learning\_rate & 1e-05 & 1e-05 & 1e-05 \\
+unlearn.batch\_size & 4 & 4 & 4 \\
+unlearn.eval\_batch\_size & 64 & 64 & 64 \\
+unlearn.retain\_weight & 1.0 & 1.0 & 1.0 \\
+unlearn.beta & 0.1 & 0.1 & 0.1 \\
+attack.min\_k & 0.2 & 0.2 & 0.2 \\
+federated.num\_clients & -- & 10 / 3 / 5 & 5 \\
+federated.sharding & -- & "by\_author" / "iid" & "iid" \\
+federated.rounds & -- & 8 & 8 \\
+federated.local\_epochs & -- & 1 & 1 \\
+federated.client\_unlearn\_epochs & -- & 2 & 2 \\
+federated.rho\_factor & -- & 2.0 & 2.0 \\
+federated.recovery\_rounds & -- & 2 & 2 \\
+\bottomrule
+\end{tabular*}
+\end{table*}

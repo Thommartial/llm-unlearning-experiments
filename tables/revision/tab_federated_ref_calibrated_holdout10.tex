@@ -1,0 +1,37 @@
+\begin{table*}[t]
+\centering
+\caption{Membership inference before and after federated unlearning (Ref.-calib., holdout10 non-members). Gap is the post-unlearning AUC minus the retrained model's (same seed); advantage is $|\mathrm{AUC}-0.5|$; outliers by base-model difficulty, stratum-matched.}
+\label{tab:federated-ref-calibrated-holdout10}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccccc@{}}
+\toprule
+ & & & \multicolumn{2}{c}{\textbf{MIA AUC}} & & & \multicolumn{3}{c}{\textbf{Post-unlearning advantage}} & \multicolumn{2}{c}{\textbf{Update AUC}} \\
+\cmidrule(lr){4-5}\cmidrule(lr){8-10}\cmidrule(lr){11-12}
+\textbf{Model} & \textbf{Setting} & \textbf{Stage} & \textbf{Pre} & \textbf{Post} & \textbf{Gap} & \textbf{TPR@1\%} & \textbf{All} & \textbf{Typical} & \textbf{Outlier} & \textbf{Score chg.} & \textbf{Grad. align.} \\
+\midrule
+GPT-2 & by\_author, $K=5$ & Retrain & $0.72 \pm 0.01$ & $0.62 \pm 0.01$ & $0.00 \pm 0.00$ & $0.02 \pm 0.00$ & $0.12 \pm 0.01$ & $0.12 \pm 0.01$ & $0.05 \pm 0.01$ & -- & $0.96 \pm 0.02$ \\
+GPT-2 & by\_author, $K=5$ & Client GA, upload & $0.72 \pm 0.01$ & $0.54 \pm 0.28$ & $-0.08 \pm 0.28$ & $0.04 \pm 0.07$ & $0.07 \pm 0.20$ & $0.13 \pm 0.17$ & $0.06 \pm 0.12$ & -- & $0.55 \pm 0.14$ \\
+GPT-2 & by\_author, $K=5$ & Client GA, global & $0.72 \pm 0.01$ & $0.62 \pm 0.09$ & $-0.00 \pm 0.08$ & $0.02 \pm 0.01$ & $0.12 \pm 0.09$ & $0.12 \pm 0.06$ & $0.05 \pm 0.10$ & -- & $0.68 \pm 0.05$ \\
+GPT-2 & iid, $K=3$ & Retrain & $0.69 \pm 0.02$ & $0.60 \pm 0.02$ & $0.00 \pm 0.00$ & $0.02 \pm 0.00$ & $0.10 \pm 0.02$ & $0.10 \pm 0.02$ & $0.03 \pm 0.02$ & -- & $0.92 \pm 0.02$ \\
+GPT-2 & iid, $K=3$ & Client GA, upload & $0.69 \pm 0.02$ & $0.60 \pm 0.17$ & $0.00 \pm 0.15$ & $0.03 \pm 0.04$ & $0.10 \pm 0.17$ & $0.09 \pm 0.22$ & $0.11 \pm 0.24$ & -- & $0.54 \pm 0.14$ \\
+GPT-2 & iid, $K=3$ & Client GA, global & $0.69 \pm 0.02$ & $0.56 \pm 0.04$ & $-0.04 \pm 0.03$ & $0.02 \pm 0.00$ & $0.06 \pm 0.04$ & $0.06 \pm 0.06$ & $0.01 \pm 0.03$ & -- & $0.72 \pm 0.11$ \\
+GPT-2 & iid, $K=10$ & Retrain & $0.75 \pm 0.01$ & $0.63 \pm 0.00$ & $0.00 \pm 0.00$ & $0.02 \pm 0.01$ & $0.13 \pm 0.00$ & $0.13 \pm 0.01$ & $0.06 \pm 0.00$ & -- & $0.99 \pm 0.00$ \\
+GPT-2 & iid, $K=10$ & Client GA, upload & $0.75 \pm 0.01$ & $0.50 \pm 0.22$ & $-0.13 \pm 0.22$ & $0.01 \pm 0.01$ & $0.07 \pm 0.07$ & $0.11 \pm 0.08$ & $0.07 \pm 0.07$ & -- & $0.50 \pm 0.11$ \\
+GPT-2 & iid, $K=10$ & Client GA, global & $0.75 \pm 0.01$ & $0.73 \pm 0.00$ & $0.10 \pm 0.00$ & $0.05 \pm 0.01$ & $0.23 \pm 0.00$ & $0.22 \pm 0.00$ & $0.18 \pm 0.01$ & -- & $0.60 \pm 0.02$ \\
+DistilGPT-2 & iid, $K=5$ & Retrain & $0.70 \pm 0.00$ & $0.62 \pm 0.00$ & $0.00 \pm 0.00$ & $0.03 \pm 0.01$ & $0.12 \pm 0.00$ & $0.13 \pm 0.01$ & $0.03 \pm 0.01$ & -- & $0.95 \pm 0.01$ \\
+DistilGPT-2 & iid, $K=5$ & Client GA, upload & $0.70 \pm 0.00$ & $0.51 \pm 0.07$ & $-0.11 \pm 0.08$ & $0.02 \pm 0.03$ & $0.04 \pm 0.05$ & $0.07 \pm 0.04$ & $0.07 \pm 0.05$ & -- & $0.60 \pm 0.04$ \\
+DistilGPT-2 & iid, $K=5$ & Client GA, global & $0.70 \pm 0.00$ & $0.57 \pm 0.04$ & $-0.05 \pm 0.04$ & $0.02 \pm 0.01$ & $0.07 \pm 0.04$ & $0.08 \pm 0.03$ & $0.02 \pm 0.02$ & -- & $0.65 \pm 0.03$ \\
+GPT-2 & iid, $K=5$ & Retrain & $0.72 \pm 0.00$ & $0.62 \pm 0.00$ & $0.00 \pm 0.00$ & $0.02 \pm 0.01$ & $0.12 \pm 0.00$ & $0.12 \pm 0.00$ & $0.04 \pm 0.01$ & -- & $0.96 \pm 0.01$ \\
+GPT-2 & iid, $K=5$ & Client GA, upload & $0.72 \pm 0.00$ & $0.50 \pm 0.07$ & $-0.11 \pm 0.08$ & $0.02 \pm 0.02$ & $0.05 \pm 0.03$ & $0.07 \pm 0.06$ & $0.06 \pm 0.06$ & -- & $0.58 \pm 0.03$ \\
+GPT-2 & iid, $K=5$ & Client GA, global & $0.72 \pm 0.00$ & $0.62 \pm 0.03$ & $0.00 \pm 0.03$ & $0.03 \pm 0.01$ & $0.12 \pm 0.03$ & $0.12 \pm 0.02$ & $0.05 \pm 0.03$ & -- & $0.70 \pm 0.04$ \\
+GPT-2-medium & iid, $K=5$ & Retrain & $0.77 \pm 0.00$ & $0.61 \pm 0.00$ & $0.00 \pm 0.00$ & $0.03 \pm 0.00$ & $0.11 \pm 0.00$ & $0.11 \pm 0.00$ & $0.03 \pm 0.01$ & -- & $0.98 \pm 0.00$ \\
+GPT-2-medium & iid, $K=5$ & Client GA, upload & $0.77 \pm 0.00$ & $0.53 \pm 0.07$ & $-0.08 \pm 0.07$ & $0.02 \pm 0.02$ & $0.05 \pm 0.04$ & $0.08 \pm 0.05$ & $0.06 \pm 0.05$ & -- & $0.59 \pm 0.05$ \\
+GPT-2-medium & iid, $K=5$ & Client GA, global & $0.77 \pm 0.00$ & $0.70 \pm 0.03$ & $0.09 \pm 0.03$ & $0.05 \pm 0.01$ & $0.20 \pm 0.03$ & $0.19 \pm 0.04$ & $0.13 \pm 0.03$ & -- & $0.76 \pm 0.04$ \\
+\bottomrule
+\end{tabular*}
+
+\smallskip
+{\footnotesize Mean~$\pm$~half-width of the 95\% $t$-interval over seeds (up to 5); a single value means one seed.\par}
+\end{table*}

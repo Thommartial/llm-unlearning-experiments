@@ -1,0 +1,26 @@
+\begin{table*}[t]
+\centering
+\caption{Random-direction control of the white-box attack: AUC over all (method, seed) draws, against the SD of the AUC for independent records.}
+\label{tab:control}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllccccccc@{}}
+\toprule
+\textbf{Runs} & \textbf{Model} & \textbf{Non-members} & \textbf{Draws} & \textbf{Mean} & \textbf{SD} & \textbf{Range} & \textbf{Null SD} & \textbf{Outside $2\sigma$} & \textbf{Grad. align.} \\
+\midrule
+central & DistilGPT-2 & primary & 20 & $0.494$ & $0.021$ & $0.456$--$0.531$ & $0.020$ & $0.10$ & $0.757$ \\
+central & DistilGPT-2 & holdout10 & 20 & $0.481$ & $0.053$ & $0.381$--$0.583$ & $0.020$ & $0.50$ & $0.681$ \\
+central & GPT-2 & primary & 20 & $0.491$ & $0.020$ & $0.454$--$0.534$ & $0.020$ & $0.05$ & $0.791$ \\
+central & GPT-2 & holdout10 & 20 & $0.478$ & $0.045$ & $0.399$--$0.559$ & $0.020$ & $0.45$ & $0.722$ \\
+central & GPT-2-medium & primary & 20 & $0.505$ & $0.027$ & $0.471$--$0.591$ & $0.020$ & $0.05$ & $0.782$ \\
+central & GPT-2-medium & holdout10 & 20 & $0.492$ & $0.037$ & $0.424$--$0.571$ & $0.020$ & $0.35$ & $0.726$ \\
+federated & GPT-2 & primary & 42 & $0.502$ & $0.034$ & $0.448$--$0.570$ & $0.020$ & $0.29$ & $0.773$ \\
+federated & GPT-2 & holdout10 & 42 & $0.493$ & $0.037$ & $0.438$--$0.554$ & $0.020$ & $0.38$ & $0.730$ \\
+federated & DistilGPT-2 & primary & 15 & $0.499$ & $0.032$ & $0.449$--$0.547$ & $0.020$ & $0.20$ & $0.752$ \\
+federated & DistilGPT-2 & holdout10 & 15 & $0.492$ & $0.031$ & $0.431$--$0.531$ & $0.020$ & $0.20$ & $0.732$ \\
+federated & GPT-2-medium & primary & 15 & $0.485$ & $0.027$ & $0.433$--$0.529$ & $0.020$ & $0.13$ & $0.809$ \\
+federated & GPT-2-medium & holdout10 & 15 & $0.497$ & $0.039$ & $0.444$--$0.566$ & $0.020$ & $0.40$ & $0.778$ \\
+\bottomrule
+\end{tabular*}
+\end{table*}

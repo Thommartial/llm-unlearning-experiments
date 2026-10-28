@@ -1,0 +1,59 @@
+\begin{table*}[t]
+\centering
+\caption{Phase times of seed 0 run alone (pilot, LoRA pilot) and with a second process on the other GPU (campaign).}
+\label{tab:pilot-slowdown}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllcccc@{}}
+\toprule
+\textbf{Model} & \textbf{Run} & \textbf{Method} & \textbf{Phase} & \textbf{Alone (s)} & \textbf{Campaign (s)} & \textbf{Ratio} & \textbf{Same GPU} \\
+\midrule
+GPT-2 & central & Retrain & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
+GPT-2 & central & Retrain & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
+GPT-2 & central & Retrain & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
+GPT-2 & central & Retrain & method & $125.5$ & $118.8$ & $0.95$ & yes \\
+GPT-2 & central & Retrain & post\_eval & $123.6$ & $108.3$ & $0.88$ & yes \\
+GPT-2 & central & Retrain & alignment & $73.3$ & $72.5$ & $0.99$ & yes \\
+GPT-2 & central & GA & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
+GPT-2 & central & GA & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
+GPT-2 & central & GA & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
+GPT-2 & central & GA & method & $22.2$ & $21.7$ & $0.98$ & yes \\
+GPT-2 & central & GA & post\_eval & $144.0$ & $127.6$ & $0.89$ & yes \\
+GPT-2 & central & GA & alignment & $74.9$ & $71.0$ & $0.95$ & yes \\
+GPT-2 & central & GD & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
+GPT-2 & central & GD & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
+GPT-2 & central & GD & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
+GPT-2 & central & GD & method & $32.0$ & $31.0$ & $0.97$ & yes \\
+GPT-2 & central & GD & post\_eval & $113.8$ & $100.4$ & $0.88$ & yes \\
+GPT-2 & central & GD & alignment & $74.8$ & $71.4$ & $0.95$ & yes \\
+GPT-2 & central & NPO & base\_scoring & $11.1$ & $10.3$ & $0.92$ & yes \\
+GPT-2 & central & NPO & finetune & $142.3$ & $134.2$ & $0.94$ & yes \\
+GPT-2 & central & NPO & pre\_eval & $131.7$ & $115.2$ & $0.87$ & yes \\
+GPT-2 & central & NPO & method & $40.2$ & $38.9$ & $0.97$ & yes \\
+GPT-2 & central & NPO & post\_eval & $143.7$ & $127.0$ & $0.88$ & yes \\
+GPT-2 & central & NPO & alignment & $74.7$ & $71.0$ & $0.95$ & yes \\
+GPT-2 & iid\_K5 & Retrain & base\_scoring & $11.0$ & $10.4$ & $0.95$ & yes \\
+GPT-2 & iid\_K5 & Retrain & pre\_eval & $132.5$ & $123.7$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Retrain & method & $332.6$ & $319.9$ & $0.96$ & yes \\
+GPT-2 & iid\_K5 & Retrain & post\_eval & $124.7$ & $116.5$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Retrain & alignment & $75.1$ & $69.9$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Retrain & fedavg & $376.4$ & $361.8$ & $0.96$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & base\_scoring & $11.0$ & $10.4$ & $0.95$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & pre\_eval & $132.5$ & $123.7$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & method & $28.3$ & $27.7$ & $0.98$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & post\_eval & $42.2$ & $39.3$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & alignment & $73.9$ & $71.6$ & $0.97$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & fedavg & $376.4$ & $361.8$ & $0.96$ & yes \\
+GPT-2 & iid\_K5 & Client GA, upload & client\_unlearn & $28.3$ & $27.7$ & $0.98$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & base\_scoring & $11.0$ & $10.4$ & $0.95$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & pre\_eval & $132.5$ & $123.7$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & method & $110.6$ & $106.8$ & $0.97$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & post\_eval & $131.3$ & $122.6$ & $0.93$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & alignment & $74.5$ & $70.7$ & $0.95$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & fedavg & $376.4$ & $361.8$ & $0.96$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & client\_unlearn & $28.3$ & $27.7$ & $0.98$ & yes \\
+GPT-2 & iid\_K5 & Client GA, global & recovery & $82.3$ & $79.1$ & $0.96$ & yes \\
+\bottomrule
+\end{tabular*}
+\end{table*}
