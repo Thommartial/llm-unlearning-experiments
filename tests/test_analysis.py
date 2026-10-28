@@ -214,6 +214,19 @@ def test_costs_slowdown_tofu_hyper(results):
     assert hyper.loc["unlearn.finetune_lr", "central"] == "5e-05" and "federated.rounds" not in hyper.index
 
 
+def test_the_lora_pilot_rows_are_pilot_rows(tmp_path):
+    lora = [_row(campaign="lora", model="EleutherAI/pythia-1b", variant="lora", seed=0, method=m, auc_post=0.6,
+                 gap_post=0.0, adv_post=0.1, time_s_method=t) for m, t in (("retrain", 30.0), ("npo", 12.0))]
+    pd.DataFrame(lora).to_csv(tmp_path / "lora.csv", index=False)
+    pd.DataFrame(lora).assign(campaign="pilot", time_s_method=lambda d: d["time_s_method"] / 2).to_csv(
+        tmp_path / "pilot_lora.csv", index=False)
+    a = analysis.load(tmp_path)
+    assert set(a["rows"]["campaign"]) == {"lora"} and set(a["pilot"]["model"]) == {"EleutherAI/pythia-1b"}
+    sl = analysis.pilot_slowdown(a["rows"], a["pilot"])
+    assert set(sl["method"]) == {"retrain", "npo"} and np.allclose(sl["slowdown"], 2.0)
+    assert analysis._model("EleutherAI/pythia-1b") == "Pythia-1B (LoRA)"
+
+
 def test_analyse_writes_tables_and_figures(results, tmp_path):
     a = analysis.analyse(results, tmp_path / "fig", tmp_path / "tab")
     names = {p.name for p in a["tables"]}

@@ -24,7 +24,7 @@ post). Every method also gets the white-box gradient alignment with
 same with a random direction of the same norm as a negative control. For
 retrain, Δθ = θ_retrain − θ_pre is the version change a user would observe.
 
-With `model.lora` (TinyLlama) the same path trains LoRA adapters on frozen
+With `model.lora` (Pythia-1B) the same path trains LoRA adapters on frozen
 fp16 base weights: fine-tune, retrain (fresh adapters on the retain set) and
 unlearning change the adapters only, the NPO reference is a second frozen
 adapter, and Δθ covers the adapter weights (`unlearn.lora_filter`).

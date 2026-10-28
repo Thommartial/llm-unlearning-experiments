@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 LIMIT_GIB = 14.0
+PLACEHOLDER_LR = 1e-5  # for rates still null (uncalibrated config)
 
 
 def _longest(dataset, n: int):
@@ -38,7 +39,10 @@ def run_probe(path, model: str, device: str | None = None, limit_gib: float = LI
     unit = campaign.units(raw, models=[model])[0]
     cfg = campaign.resolve(path, unit, device)
     dev = unlearn.resolve_device(cfg)
-    u = cfg.unlearn
+    # before the pilot sets them: memory does not depend on the rates
+    u = replace(cfg.unlearn, finetune_lr=cfg.unlearn.finetune_lr or PLACEHOLDER_LR,
+                learning_rate=cfg.unlearn.learning_rate or PLACEHOLDER_LR)
+    cfg = replace(cfg, unlearn=u)
     print(f"[memprobe] {model} on {dev}: train_batch_size {u.train_batch_size}, grad_accum_steps "
           f"{u.grad_accum_steps}, batch_size {u.batch_size}, eval_batch_size {u.eval_batch_size}, "
           f"precision {cfg.model.precision}", flush=True)

@@ -27,7 +27,7 @@ VERSIONS = ("import importlib.metadata as m; from peft.import_utils import is_to
 NOTEBOOKS = {
     "00_pilot": {"campaign": "pilot", "gpu_seeds": {0: None},
                  "what": "the calibration of ANALYSIS_PLAN §7 on GPT-2 seed 0 (fine-tuning rate, FedAvg rounds, "
-                         "unlearning radius), the TinyLlama LoRA rate and its first weight load, the LoRA GA "
+                         "unlearning radius), the Pythia-1B LoRA rate and its first weight load, the LoRA GA "
                          "sanity check, and one central and one federated GPT-2 run timed alone"},
     "01_central": {"campaign": "central", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]}, "memory_probe": "gpt2-medium",
                    "what": "the central campaign: DistilGPT-2, GPT-2, GPT-2-medium x seeds 0-4"},
@@ -35,8 +35,14 @@ NOTEBOOKS = {
                    "what": "the federated campaign: DistilGPT-2, GPT-2, GPT-2-medium x seeds 0-4, K = 5, iid"},
     "03_fed_ext": {"campaign": "fed_ext", "gpu_seeds": {0: [0, 2], 1: [1]},
                    "what": "the federated extensions: GPT-2 x seeds 0-2; by author K = 5, iid K = 3 and K = 10"},
-    "04_1b_lora": {"campaign": "lora", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]},
-                   "what": "the LoRA campaign: TinyLlama v1.1 x seeds 0-4, central path"},
+    "04_1b_lora": {"campaign": "lora", "gpu_seeds": {0: [0, 2, 4], 1: [1, 3]}, "memory_probe": "EleutherAI/pythia-1b",
+                   "what": "the LoRA campaign: Pythia-1B (LoRA on query_key_value and dense, fp16 AMP) x seeds 0-4, "
+                           "central path"},
+    "07_pilot_lora": {"campaign": "pilot", "only": "lora", "gpu_seeds": {0: None},
+                      "what": "the LoRA pilot (`--only lora`): the first Pythia-1B weight load, rule 1 for LoRA "
+                              "over {1e-4, 2e-4} at batch 16 with the world-facts check, the unlearning rate "
+                              "1e-5 x LoRA rate / 2e-5, the GA sanity check (forget loss up by at least 0.05 "
+                              "nats), with step counters, and one central Pythia-1B LoRA unit timed alone"},
 }
 # diagnostics: one process on GPU 0, no tests or smoke run, results zipped like the campaigns
 DIAGNOSTICS = {
@@ -104,7 +110,11 @@ assert n_gpu >= len(GPU_SEEDS), f"need {len(GPU_SEEDS)} GPU(s), found {n_gpu}" "
 def notebook(name: str, spec: dict) -> dict:
     camp = spec["campaign"]
     pilot = camp == "pilot"
+    only = spec.get("only")  # the pilot's --only part
     probe = spec.get("memory_probe")
+    run = ("run the LoRA pilot (`--only lora`) in one process on GPU 0" if only else
+           "run the pilot in one process on GPU 0" if pilot else
+           "run the campaign in two processes, one per T4, split by seed")
     cells = [
         _md(f"""# Revision campaign: {name}
 
@@ -112,20 +122,23 @@ Runs {spec['what']}.
 
 Launched with `scripts/kaggle_run.sh {name} <commit>`, which sets `REPO_COMMIT` below. Cells: clone the
 repository at that commit, install, check the GPUs, run the tests (a skipped CUDA test fails the notebook),
-run the smoke config on the GPU, {f"check that {probe} fits a T4 (memory probe), " if probe else ""}then {
-"run the pilot in one process on GPU 0" if pilot else "run the campaign in two processes, one per T4, split by seed"
-}. Success is judged by the result files.
+run the smoke config on the GPU, {f"check that {probe} fits a T4 (memory probe), " if probe else ""}then {run}. \
+Success is judged by the result files.
 Everything under `results/revision/` is zipped into `/kaggle/working/`; logs are in `/kaggle/working/logs/`."""),
         _code(f"""REPO_COMMIT = "SET_BY_KAGGLE_RUN"  # written by scripts/kaggle_run.sh
 REPO_URL = "{REPO_URL}"
 CAMPAIGN = "{camp}"
-GPU_SEEDS = {spec['gpu_seeds']!r}  # GPU -> seeds (None: the pilot's own)"""),
+GPU_SEEDS = {spec['gpu_seeds']!r}  # GPU -> seeds (None: the pilot's own)""" + (f"""
+ONLY = "{only}"  # --only: this part of the pilot""" if only else "")),
         *_setup_cells(),
         _code("""# every test, CUDA-only ones included: a skipped CUDA test fails the notebook
 tests = subprocess.run([sys.executable, "-m", "pytest", "-q", "tests/"], env={**ENV, "REQUIRE_CUDA_TESTS": "1"})
 assert tests.returncode == 0, "tests failed (or a CUDA-only test was skipped)" """),
         _code("""# the smoke config on the GPU: every revision path and the pilot, tiny models
-for args in (["--campaign", "smoke"], ["--campaign", "pilot", "--config", "configs/revision/smoke_cpu.yaml"]):
+for args in (["--campaign", "smoke"], ["--campaign", "pilot", "--config", "configs/revision/smoke_cpu.yaml"]""" + (
+            """,
+             ["--campaign", "pilot", "--config", "configs/revision/smoke_cpu.yaml", "--only", ONLY]""" if only else "")
+              + """):
     smoke = subprocess.run([sys.executable, "scripts/run_revision.py", *args, "--device", "cuda",
                             "--out-dir", "/tmp/smoke"], env=ENV)
     assert smoke.returncode == 0, f"smoke run failed: {args}" """),
@@ -140,7 +153,8 @@ os.makedirs("/kaggle/working/logs", exist_ok=True)
 procs, logs = {}, {}
 for gpu, seeds in GPU_SEEDS.items():
     logs[gpu] = f"/kaggle/working/logs/{CAMPAIGN}_gpu{gpu}.log"
-    cmd = [sys.executable, "scripts/run_revision.py", "--campaign", CAMPAIGN]
+    cmd = [sys.executable, "scripts/run_revision.py", "--campaign", CAMPAIGN""" + (', "--only", ONLY' if only else "")
+              + """]
     if seeds is not None:
         cmd += ["--seeds", *map(str, seeds), "--out", f"results/revision/{CAMPAIGN}_gpu{gpu}.csv"]
     env = {**ENV, "CUDA_VISIBLE_DEVICES": str(gpu), "PYTHONUNBUFFERED": "1", "REPO_COMMIT": REPO_COMMIT}
@@ -160,7 +174,18 @@ while any(p.poll() is None for p in procs.values()):
         print(f"GPU {gpu} ({state}):\\n{tail(logs[gpu])}")
 print({gpu: p.returncode for gpu, p in procs.items()}, f"{(time.time() - start) / 3600:.2f} h")"""),
     ]
-    if pilot:
+    if only:
+        cells.append(_code("""# success is judged by the result files
+import csv, json
+report = json.load(open("results/revision/pilot_lora_calibration.json"))
+variants = sorted({r["variant"] for r in csv.DictReader(open("results/revision/pilot_lora.csv"))})
+print("selected:", json.dumps(report["selected"], indent=2))
+print("flags:", report["flags"] or "none")
+print("timing runs:", variants)
+print(tail(logs[0], 12))
+ok = report.get("only") == ONLY and set(report["selected"]) == {"lora_finetune_lr", "lora_learning_rate"}
+ok = ok and variants == ["lora"]"""))
+    elif pilot:
         cells.append(_code("""# success is judged by the result files
 import csv, json
 report = json.load(open("results/revision/pilot_calibration.json"))

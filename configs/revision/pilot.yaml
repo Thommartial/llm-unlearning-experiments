@@ -1,7 +1,8 @@
 # Pilot (ANALYSIS_PLAN §7): GPT-2 seed 0 alone in one process. Calibrates the fine-tuning
-# rate, the FedAvg rounds and the unlearning radius, the LoRA rate (TinyLlama), checks that
+# rate, the FedAvg rounds and the unlearning radius, the LoRA rate (Pythia-1B), checks that
 # GA moves the LoRA forget loss, then times one central and one federated run with the
-# selected values. None of its numbers appear in the paper.
+# selected values. `--only lora` runs the LoRA part alone (with full_finetune_lr) and times
+# one central LoRA unit. None of its numbers appear in the paper.
 name: pilot
 seed: 0
 output_dir: results/revision
@@ -46,8 +47,10 @@ pilot:
   rounds: [3, 5, 8]
   retain_tolerance: 0.10         # FedAvg retain loss within 10% of the central model
   rho_factors: [0.5, 1.0, 2.0]
-  lora_model: TinyLlama/TinyLlama_v1.1
+  lora_model: EleutherAI/pythia-1b
   lora: {r: 16, alpha: 32, dropout: 0.05, base_dtype: float16, gradient_checkpointing: true,
          target_modules: {llama: [q_proj, k_proj, v_proj, o_proj], gpt_neox: [query_key_value, dense]}}
   lora_lrs: [1.0e-4, 2.0e-4]
   base_unlearn_lr: 1.0e-5        # LoRA unlearning rate = this x LoRA rate / full rate
+  full_finetune_lr: 2.0e-5       # the full rate for --only lora (the full pilot's choice, central.yaml)
+  ga_min_rise: 0.05              # GA sanity check: flag unless the forget loss rises by this many nats

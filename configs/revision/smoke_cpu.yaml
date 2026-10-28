@@ -55,3 +55,5 @@ pilot:
   lora: {}
   lora_lrs: [5.0e-4, 1.0e-3]
   base_unlearn_lr: 5.0e-4
+  full_finetune_lr: 5.0e-4
+  ga_min_rise: 0.0               # tiny untrained models: the forget loss must rise, by any amount

@@ -2,7 +2,7 @@
 
 Reads a results folder written by `scripts/run_revision.py`: the merged
 campaign CSVs (`<campaign>.csv`; per-GPU CSVs are skipped), the pilot's
-`pilot.csv`, the raw per-record scores `scores/<campaign>/<unit>.npz` and the
+`pilot.csv` and the LoRA pilot's `pilot_lora.csv`, the raw per-record scores `scores/<campaign>/<unit>.npz` and the
 resolved configs `configs/<campaign>/<unit>.json`. Rows are told apart by
 their `kind` (central or federated), so the smoke and micro outputs work too.
 
@@ -22,9 +22,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-MODEL_ORDER = ["tiny", "tiny_llama", "distilgpt2", "gpt2", "gpt2-medium", "TinyLlama/TinyLlama_v1.1"]
+MODEL_ORDER = ["tiny", "tiny_llama", "tiny_neox", "distilgpt2", "gpt2", "gpt2-medium", "EleutherAI/pythia-1b",
+               "TinyLlama/TinyLlama_v1.1"]
 MODEL_NAMES = {"distilgpt2": "DistilGPT-2", "gpt2": "GPT-2", "gpt2-medium": "GPT-2-medium",
-               "TinyLlama/TinyLlama_v1.1": "TinyLlama (LoRA)", "tiny": "tiny", "tiny_llama": "tiny Llama"}
+               "EleutherAI/pythia-1b": "Pythia-1B (LoRA)", "TinyLlama/TinyLlama_v1.1": "TinyLlama (LoRA)",
+               "tiny": "tiny", "tiny_llama": "tiny Llama", "tiny_neox": "tiny GPT-NeoX"}
 GPT2_PARAMS = {"distilgpt2": 82e6, "gpt2": 124e6, "gpt2-medium": 355e6}  # ANALYSIS_PLAN §2
 ATTACKS = ["loss_threshold", "min_k_prob", "ref_calibrated"]
 ATTACK_NAMES = {"loss_threshold": "Loss thr.", "min_k_prob": r"Min-K\%", "ref_calibrated": "Ref.-calib."}
@@ -36,6 +38,7 @@ VIEW_NAMES = {"central": "release", "any_client": "any client",
               "server, and all clients at the first recovery broadcast": "server$^{*}$"}
 DEFINITIONS = {"basediff": "primary", "rarity": "secondary", "legacy": "ablation", "legacy_pooled": "ablation"}
 KEY = ["campaign", "kind", "model", "variant"]
+PILOT_CSVS = ("pilot.csv", "pilot_lora.csv")  # timing rows of the pilot and the LoRA pilot, not campaigns
 
 
 # ---------------------------------------------------------------- loading
@@ -46,13 +49,13 @@ def load(results) -> dict:
     "scores": folder of the .npz files}. Applies the drops and adds adv_base."""
     results = Path(results)
     frames = [pd.read_csv(p) for p in sorted(results.glob("*.csv"))
-              if "_gpu" not in p.stem and p.name != "pilot.csv"]
+              if "_gpu" not in p.stem and p.name not in PILOT_CSVS]
     rows = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     if not rows.empty:
         rows = _prepare(rows)
-    pilot = results / "pilot.csv"
+    pilots = [pd.read_csv(results / n) for n in PILOT_CSVS if (results / n).exists()]
     configs = [(p.parent.name, p.stem, json.loads(p.read_text())) for p in sorted(results.glob("configs/*/*.json"))]
-    return {"rows": rows, "pilot": _prepare(pd.read_csv(pilot)) if pilot.exists() else None,
+    return {"rows": rows, "pilot": _prepare(pd.concat(pilots, ignore_index=True)) if pilots else None,
             "configs": configs, "scores": results / "scores"}
 
 
@@ -325,7 +328,8 @@ def central_costs(df: pd.DataFrame) -> pd.DataFrame:
 
 def pilot_slowdown(df: pd.DataFrame, pilot: pd.DataFrame | None) -> pd.DataFrame:
     """Time of each phase in the campaign (two processes) divided by the
-    pilot's (GPT-2 seed 0 alone), for the same model, seed, variant and method."""
+    pilot's (GPT-2 seed 0, and the LoRA pilot's LoRA unit, each run alone),
+    for the same model, seed, variant and method."""
     if pilot is None or df.empty:
         return pd.DataFrame()
     p = per_unit(pilot)
@@ -634,8 +638,8 @@ def write_tables(a: dict, out) -> list[Path]:
         rows = [[_model(r["model"]), _tex(r["variant"]), METHOD_NAMES.get(r["method"], r["method"]), _tex(r["phase"]),
                  f"${r['alone_s']:.1f}$", f"${r['campaign_s']:.1f}$", _fmt(r["slowdown"]),
                  "yes" if r["same_gpu"] else "no"] for r in a["slowdown"].to_dict("records")]
-        save("tab_pilot_slowdown.tex", "Phase times of GPT-2 seed 0 run alone (pilot) and with a second process "
-             "on the other GPU (campaign).", "tab:pilot-slowdown",
+        save("tab_pilot_slowdown.tex", "Phase times of seed 0 run alone (pilot, LoRA pilot) and with a second "
+             "process on the other GPU (campaign).", "tab:pilot-slowdown",
              [" & ".join(_b(x) for x in ("Model", "Run", "Method", "Phase", "Alone (s)", "Campaign (s)", "Ratio",
                                          "Same GPU"))], rows, align="llll" + "c" * 4)
     return written

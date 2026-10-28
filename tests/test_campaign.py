@@ -34,20 +34,25 @@ def _script():
     return mod
 
 
-@pytest.mark.parametrize("name, n_units, models, requires", [
-    ("central", 15, {"distilgpt2", "gpt2", "gpt2-medium"}, {"unlearn.finetune_lr"}),
+@pytest.mark.parametrize("name, n_units, models, requires, calibrated", [
+    ("central", 15, {"distilgpt2", "gpt2", "gpt2-medium"}, {"unlearn.finetune_lr"}, True),
     ("fed_iid", 15, {"distilgpt2", "gpt2", "gpt2-medium"},
-     {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}),
-    ("fed_ext", 9, {"gpt2"}, {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}),
-    ("lora", 5, {"TinyLlama/TinyLlama_v1.1"}, {"unlearn.finetune_lr", "unlearn.learning_rate"}),
+     {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}, True),
+    ("fed_ext", 9, {"gpt2"}, {"unlearn.finetune_lr", "federated.rounds", "federated.rho_factor"}, True),
+    # Pythia-1B: waits for the LoRA pilot (07_pilot_lora)
+    ("lora", 5, {"EleutherAI/pythia-1b"}, {"unlearn.finetune_lr", "unlearn.learning_rate"}, False),
 ])
-def test_campaign_configs(name, n_units, models, requires, tmp_path):
+def test_campaign_configs(name, n_units, models, requires, calibrated, tmp_path):
     path = REVISION / f"{name}.yaml"
     raw = campaign.read_campaign(path)
     us = campaign.units(raw)
     assert len(us) == n_units and {u.model for u in us} == models
     assert set(raw["campaign"]["requires"]) == requires
-    campaign.check_calibrated(raw)  # the pilot's values are set
+    if calibrated:
+        campaign.check_calibrated(raw)  # the pilot's values are set
+    else:
+        with pytest.raises(SystemExit, match="set from pilot"):
+            campaign.check_calibrated(raw)
     blank = _uncalibrated(tmp_path) / f"{name}.yaml"
     with pytest.raises(SystemExit, match="set from pilot"):  # every required value is marked
         campaign.check_calibrated(campaign.read_campaign(blank))
@@ -71,6 +76,11 @@ def test_fed_ext_variants_and_lora_settings():
     assert pilot["finetune_lrs"] == [2e-5, 5e-5] and pilot["rounds"] == [3, 5, 8]
     assert pilot["rho_factors"] == [0.5, 1.0, 2.0] and pilot["lora_lrs"] == [1e-4, 2e-4]
     assert (pilot["model"], pilot["seed"]) == ("gpt2", 0)
+    assert pilot["lora_model"] == lora.model.name == "EleutherAI/pythia-1b" and pilot["ga_min_rise"] == 0.05
+    assert pilot["lora"] == yaml.safe_load((REVISION / "lora.yaml").read_text())["model"]["lora"]
+    # the LoRA pilot's full rate is the full pilot's choice
+    assert pilot["full_finetune_lr"] == load_config(REVISION / "central.yaml").unlearn.finetune_lr == 2e-5
+    assert unlearn.lora_targets(unlearn.lora_settings(lora), "gpt_neox") == ["query_key_value", "dense"]
 
 
 def test_units_resolve_and_hash():
@@ -264,6 +274,9 @@ def test_notebooks_are_generated_and_parse():
         assert 'env = {**ENV, "CUDA_VISIBLE_DEVICES"' in "".join(code)  # the campaign processes
         ids = [c["id"] for c in nb["cells"]]
         assert len(set(ids)) == len(ids) and all(re.fullmatch(r"[A-Za-z0-9_-]+", i) for i in ids)
+        if nb_spec.get("only"):  # 07_pilot_lora: the LoRA part of the pilot, in the smoke run and the run itself
+            assert f'ONLY = "{nb_spec["only"]}"' in code[0] and "".join(code).count('"--only", ONLY') == 2
+            assert "pilot_lora_calibration.json" in code[-2] and "pilot_lora.csv" in code[-2]
         seeds = [s for v in nb_spec["gpu_seeds"].values() if v for s in v]
         if nb_spec["campaign"] != "pilot":
             units = campaign.units(campaign.read_campaign(REVISION / f"{nb_spec['campaign']}.yaml"))
@@ -327,6 +340,8 @@ def test_apply_calibration_from_the_script_and_the_pilot_report(tmp_path, capsys
 
     report = run_pilot(REVISION / "smoke_cpu.yaml", "cpu", tmp_path / "out")
     configs, _ = _calibration(tmp_path)
+    lora = configs / "lora.yaml"  # the smoke pilot measures its LoRA rates on tiny_llama
+    lora.write_text(lora.read_text().replace("name: EleutherAI/pythia-1b", "name: tiny_llama"))
     path = tmp_path / "out" / "pilot_calibration.json"
     assert _script().main(["--apply-calibration", str(path), "--configs-dir", str(configs)]) == 0
     out = capsys.readouterr().out
@@ -342,13 +357,100 @@ def test_apply_calibration_from_the_script_and_the_pilot_report(tmp_path, capsys
         sel["finetune_lr"], sel["rounds"], sel["rho_factor"])
 
 
+def test_lora_pilot_on_smoke_config(tmp_path):
+    from unlearning import pilot
+
+    report = pilot.run_pilot(REVISION / "smoke_cpu.yaml", "cpu", tmp_path, only="lora")
+    sel = report["selected"]
+    assert report["only"] == "lora" and report["lora_model"] == "tiny_llama"
+    assert set(sel) == {"lora_finetune_lr", "lora_learning_rate"}
+    assert sel["lora_learning_rate"] == pytest.approx(5e-4 * sel["lora_finetune_lr"] / 5e-4)  # full_finetune_lr
+    m = report["measurements"]
+    assert {"lora_weight_load", "lora_lr0.0005", "lora_lr0.001", "lora_ga_sanity"} == set(m)  # no full-model step
+    assert all(m[k]["steps"]["batches"] > 0 for k in ("lora_lr0.0005", "lora_lr0.001", "lora_ga_sanity"))
+    ga = m["lora_ga_sanity"]
+    assert pilot.GA_MIN_RISE == 0.05 and ga["min_rise"] == 0.0  # smoke_cpu.yaml sets 0 for the tiny models
+    assert ga["rises"] == (ga["rise"] >= 0.0)
+    assert any("raises the forget loss by" in f for f in report["flags"]) == (not ga["rises"])
+    assert "timing_lora" in report["phases"] and not any(k.startswith(("full_", "fedavg")) for k in report["phases"])
+    assert json.loads((tmp_path / "pilot_lora_calibration.json").read_text())["selected"] == sel
+    assert not (tmp_path / "pilot_calibration.json").exists() and not (tmp_path / "pilot.csv").exists()
+    rows = campaign.read_rows(tmp_path / "pilot_lora.csv")
+    unit = pilot.lora_timing_unit(yaml.safe_load((REVISION / "smoke_cpu.yaml").read_text())["pilot"],
+                                  sel["lora_finetune_lr"], sel["lora_learning_rate"])
+    assert campaign.done(rows, unit, "pilot")  # every method of one central LoRA unit
+    assert {(r["model"], r["variant"], r["kind"]) for r in rows} == {("tiny_llama", "lora", "central")}
+
+
+@pytest.mark.parametrize("min_rise, flagged", [(-1e3, False), (1e3, True)])
+def test_lora_pilot_ga_sanity_threshold(min_rise, flagged, tmp_path, monkeypatch):
+    from unlearning import pilot
+
+    monkeypatch.setattr(pilot, "_time_unit", lambda *a, **k: None)  # the timing unit is tested above
+    path = tmp_path / "smoke_cpu.yaml"
+    path.write_text((REVISION / "smoke_cpu.yaml").read_text().replace(
+        "  ga_min_rise: 0.0 ", f"  ga_min_rise: {min_rise} "))
+    report = pilot.run_pilot(path, "cpu", tmp_path, only="lora")
+    assert report["measurements"]["lora_ga_sanity"]["min_rise"] == min_rise
+    assert any("raises the forget loss by" in f for f in report["flags"]) == flagged
+
+
+def test_lora_pilot_times_the_lora_campaign_unit():
+    from dataclasses import asdict
+
+    from unlearning import pilot
+
+    p = yaml.safe_load((REVISION / "pilot.yaml").read_text())["pilot"]
+    unit = pilot.lora_timing_unit(p, 2e-4, 1e-4)
+    timed = campaign.resolve(REVISION / "pilot.yaml", unit)
+    lora_unit = campaign.units(campaign.read_campaign(REVISION / "lora.yaml"))[0]
+    lora_unit.overrides = {**lora_unit.overrides, "unlearn": {"finetune_lr": 2e-4, "learning_rate": 1e-4}}
+    planned = campaign.resolve(REVISION / "lora.yaml", lora_unit)
+    assert unit.key == lora_unit.key == ("EleutherAI/pythia-1b", 0, "lora") and unit.kind == lora_unit.kind
+    for section in ("model", "data", "unlearn", "attack"):  # the same unit as in the LoRA campaign
+        assert asdict(getattr(timed, section)) == asdict(getattr(planned, section)), section
+    with pytest.raises(ValueError, match="only"):
+        pilot.run_pilot(REVISION / "smoke_cpu.yaml", "cpu", only="full")
+    with pytest.raises(SystemExit):
+        _script().main(["--campaign", "central", "--only", "lora"])
+
+
+def test_apply_calibration_from_a_lora_only_report(tmp_path):
+    configs = _uncalibrated(tmp_path / "configs")
+    before = {p.name: p.read_text() for p in configs.iterdir()}
+    report = tmp_path / "pilot_lora_calibration.json"
+
+    def write(**kw):
+        report.write_text(json.dumps({"only": "lora", "lora_model": "EleutherAI/pythia-1b", "measurements": {},
+                                      "flags": [], "selected": {"lora_finetune_lr": 2e-4,
+                                                                "lora_learning_rate": 1e-4}, **kw}))
+    write(selected={"lora_finetune_lr": 2e-4})
+    with pytest.raises(ValueError, match="lora_learning_rate"):
+        campaign.apply_calibration(report, configs)
+    write(lora_model="TinyLlama/TinyLlama_v1.1")  # rates of another model
+    with pytest.raises(ValueError, match="measured on TinyLlama/TinyLlama_v1.1"):
+        campaign.apply_calibration(report, configs)
+    write()
+    diff = campaign.apply_calibration(report, configs)
+    cfg = load_config(configs / "lora.yaml")
+    assert (cfg.unlearn.finetune_lr, cfg.unlearn.learning_rate) == (2e-4, 1e-4) and diff.count("\n+  ") == 2
+    campaign.check_calibrated(campaign.read_campaign(configs / "lora.yaml"))
+    assert all((configs / n).read_text() == t for n, t in before.items() if n != "lora.yaml")  # lora.yaml only
+    # the full pilot's report holds TinyLlama rates: refused for the Pythia-1B lora.yaml
+    old = Path("results/revision/pilot_calibration.json")
+    if old.exists():
+        with pytest.raises(ValueError, match="measured on TinyLlama"):
+            campaign.apply_calibration(old, _uncalibrated(tmp_path / "again"))
+
+
 def test_gitignore_keeps_only_the_merged_results():
     import shutil
     import subprocess
 
     if shutil.which("git") is None:
         pytest.skip("git not available")
-    kept = ["central.csv", "fed_iid.csv", "fed_ext.csv", "lora.csv", "pilot.csv", "pilot_calibration.json"]
+    kept = ["central.csv", "fed_iid.csv", "fed_ext.csv", "lora.csv", "pilot.csv", "pilot_calibration.json",
+            "pilot_lora.csv", "pilot_lora_calibration.json"]
     dropped = ["central_gpu0.csv", "scores/central/gpt2_seed0_central.npz", "configs/central/gpt2_seed0_central.json",
                "smoke/smoke.csv", "micro/micro.csv", "kaggle/01_central/revision_central.zip"]
 

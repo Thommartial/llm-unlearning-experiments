@@ -1,6 +1,6 @@
 """Pilot: the calibration of ANALYSIS_PLAN §7 and the timing runs, one process.
 
-Steps, in order (the first fails early if the TinyLlama weights do not load):
+Steps, in order (the first fails early if the LoRA model's weights do not load):
   0. Load the LoRA model's pre-trained weights and score a few records.
   1. Rule 1, full fine-tuning (GPT-2, seed 0): for each learning rate, fine-tune
      the base model on all members for `epochs` epochs; keep the rate with
@@ -13,12 +13,18 @@ Steps, in order (the first fails early if the TinyLlama weights do not load):
      norm of the last round's update, then the recovery rounds; the factor
      is the smallest whose post-recovery forget loss exceeds the forget loss
      of the federated retrain (R rounds over clients 1..K-1).
-  4. Rule 1 for LoRA (TinyLlama) over its own grid.
+  4. Rule 1 for LoRA (`lora_model`, e.g. Pythia-1B) over its own grid.
   5. Sanity check (report only): GA at 1e-5 x (LoRA rate / full rate) on the
-     LoRA fine-tuned model; does the forget loss rise?
+     LoRA fine-tuned model; flagged unless the forget loss rises by at
+     least `ga_min_rise` nats.
   6. Timing: run_central and run_fed (iid) for GPT-2 seed 0 with the
      selected values, alone in this process; their rows (with every phase
      time) go to the pilot CSV.
+`only="lora"` (`--campaign pilot --only lora`) runs steps 0, 4 and 5 with the
+full rate `full_finetune_lr` (from the full pilot), then times one central
+LoRA unit with the selected LoRA values; the report goes to
+`pilot_lora_calibration.json` (with `"only": "lora"`) and the rows to
+`pilot_lora.csv`, so the full pilot's files stay as they are.
 When no grid value meets a rule, the last value is kept and a flag is
 raised. Every phase is timed (`costs.phase`). The selected values, every
 measurement and the flags go to `pilot_calibration.json` and are printed
@@ -37,6 +43,8 @@ from pathlib import Path
 import yaml
 
 LOSS_RECORDS = 16  # step 0: records scored after loading the LoRA model's weights
+GA_MIN_RISE = 0.05  # step 5: smallest forget-loss rise (nats) that passes, unless pilot.ga_min_rise is set
+ONLY = ("lora",)
 
 
 def _with(cfg, **sections):
@@ -127,12 +135,98 @@ def _free(model) -> None:
         torch.cuda.empty_cache()
 
 
-def run_pilot(path, device: str | None = None, out_dir="results/revision", out_csv=None) -> dict:
-    """Run the pilot described in the module docstring; returns its report."""
-    from . import campaign, central, data, federated, unlearn
+def _lora_weight_load(log: _Log, lcfg, p: dict) -> None:
+    """Step 0: load the LoRA model's weights and score a few forget records; stop on failure."""
+    from . import data, unlearn
+    from .seed import set_seed
+
+    with log.phase("lora_weight_load"):
+        set_seed(lcfg.seed)
+        try:
+            model, tok = unlearn.build_model_and_tokenizer(lcfg)
+        except RuntimeError as e:
+            raise SystemExit(f"[pilot] stopping: {e}") from e
+        model.to(log.device)
+        few = data.load_splits(lcfg, tok).forget.head(LOSS_RECORDS)
+        loss = _loss(model, few, lcfg, log.device)
+    if not math.isfinite(loss):
+        raise SystemExit(f"[pilot] stopping: {p['lora_model']} loaded but its loss on {LOSS_RECORDS} records is {loss}.")
+    log.measure("lora_weight_load", model=p["lora_model"], forget_loss_base=loss)
+    _free(model)
+
+
+def _lora_rates(log: _Log, lcfg, p: dict, full_lr: float) -> tuple[float, float]:
+    """Steps 4 and 5: rule 1 over `lora_lrs`, the unlearning rate
+    `base_unlearn_lr` x LoRA rate / `full_lr`, and the GA sanity check."""
+    from . import unlearn
+    from .seed import set_seed
+
+    dev = log.device
+    lora_lr, model, lsplits, _, _ = _finetune_grid(log, lcfg, p["lora_lrs"], p["epochs"], p["world_facts_tolerance"],
+                                                   "lora")
+    unlearn_lr = p["base_unlearn_lr"] * lora_lr / full_lr
+    log.report["selected"]["lora_finetune_lr"] = lora_lr
+    log.report["selected"]["lora_learning_rate"] = unlearn_lr
+    min_rise = p.get("ga_min_rise", GA_MIN_RISE)
+    before = _loss(model, lsplits.forget, lcfg, dev)
+    set_seed(lcfg.seed)
+    steps = unlearn.StepStats()
+    with log.phase("lora_ga_sanity"):
+        unlearn.apply_unlearning(model, lsplits, _with(lcfg, unlearn={"method": "gradient_ascent",
+                                                                      "learning_rate": unlearn_lr}), dev, steps)
+    after = _loss(model, lsplits.forget, lcfg, dev)
+    log.measure("lora_ga_sanity", learning_rate=unlearn_lr, full_finetune_lr=full_lr, forget_loss_before=before,
+                forget_loss_after=after, rise=after - before, min_rise=min_rise, rises=after - before >= min_rise,
+                steps=steps.summary())
+    if not after - before >= min_rise:
+        log.flag(f"LoRA GA at {unlearn_lr:g} raises the forget loss by {after - before:.4f} nats "
+                 f"({before:.4f} -> {after:.4f}), less than {min_rise:g}")
+    _free(model)
+    return lora_lr, unlearn_lr
+
+
+def _time_unit(log: _Log, path, unit, device, out_dir: Path, out_csv: Path) -> None:
+    """Run one campaign unit alone in this process; its rows (every phase time) go to `out_csv`."""
+    from . import campaign
+
+    start = time.perf_counter()  # not a cost phase: run_unit times its own phases
+    rows = campaign.run_unit(path, unit, "pilot", device, out_dir)
+    log.report["phases"][f"timing_{unit.variant}"] = {"wall_s": time.perf_counter() - start}
+    print(f"[pilot] timing_{unit.variant}: {time.perf_counter() - start:.1f} s", flush=True)
+    campaign.write_rows(out_csv, rows, replace_keys=[unit.key])
+    r = rows[0]
+    times = {k[len("time_s_"):]: v for k, v in r.items() if k.startswith("time_s_") and v is not None}
+    print(f"[pilot] timing_{unit.variant} phases (s, first row): "
+          + "  ".join(f"{k}={v:.1f}" for k, v in times.items()), flush=True)
+    for row in rows:
+        if row["attack"] == "loss_threshold" and row["nonmember"] == "primary":
+            print(f"[pilot]   {row['method']}: " + "  ".join(
+                f"{k[len('time_s_'):]}={row[k]:.1f}" for k in row
+                if k.startswith("time_s_") and row[k] is not None and k[len("time_s_"):] not in
+                ("base_scoring", "finetune", "fedavg", "pre_eval")), flush=True)
+
+
+def lora_timing_unit(p: dict, lora_lr: float, unlearn_lr: float):
+    """The central LoRA unit the LoRA-only pilot times: the pilot config with
+    the LoRA model, its LoRA settings and the selected rates (the same
+    settings as lora.yaml's unit; a test checks this)."""
+    from . import campaign
+
+    return campaign.Unit(p["lora_model"], p["seed"], "lora", "central",
+                         {"model": {"lora": p.get("lora", {})},
+                          "unlearn": {"finetune_lr": lora_lr, "learning_rate": unlearn_lr}})
+
+
+def run_pilot(path, device: str | None = None, out_dir="results/revision", out_csv=None,
+              only: str | None = None) -> dict:
+    """Run the pilot described in the module docstring (all of it, or only
+    the LoRA part); returns its report."""
+    from . import campaign, central, federated, unlearn
     from .config import load_config
     from .seed import set_seed
 
+    if only is not None and only not in ONLY:
+        raise ValueError(f"only must be one of {ONLY}, not {only!r}")
     raw = yaml.safe_load(Path(path).read_text())
     p = raw["pilot"]
     cfg = load_config(path)
@@ -146,19 +240,26 @@ def run_pilot(path, device: str | None = None, out_dir="results/revision", out_c
     out_dir = Path(out_dir)
 
     # 0. the first load of the LoRA model's weights: fail early
-    with log.phase("lora_weight_load"):
-        set_seed(cfg.seed)
-        try:
-            model, tok = unlearn.build_model_and_tokenizer(lcfg)
-        except RuntimeError as e:
-            raise SystemExit(f"[pilot] stopping: {e}") from e
-        model.to(dev)
-        few = data.load_splits(lcfg, tok).forget.head(LOSS_RECORDS)
-        loss = _loss(model, few, lcfg, dev)
-    if not math.isfinite(loss):
-        raise SystemExit(f"[pilot] stopping: {p['lora_model']} loaded but its loss on {LOSS_RECORDS} records is {loss}.")
-    log.measure("lora_weight_load", model=p["lora_model"], forget_loss_base=loss)
-    _free(model)
+    _lora_weight_load(log, lcfg, p)
+
+    if only == "lora":
+        log.report["only"] = "lora"
+        log.report["lora_model"] = p["lora_model"]
+        full_lr = p["full_finetune_lr"]
+        lora_lr, unlearn_lr = _lora_rates(log, lcfg, p, full_lr)
+        out_csv = Path(out_csv or out_dir / "pilot_lora.csv")
+        _time_unit(log, path, lora_timing_unit(p, lora_lr, unlearn_lr), device, out_dir, out_csv)
+        report_path = out_dir / "pilot_lora_calibration.json"
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(log.report, indent=2, default=str))
+        sel = log.report["selected"]
+        print("[pilot] selected values (paste into configs/revision/lora.yaml, lines marked '# set from pilot', "
+              "or use --apply-calibration):")
+        print(f"  lora.yaml:  unlearn.finetune_lr: {sel['lora_finetune_lr']:g}   unlearn.learning_rate: "
+              f"{sel['lora_learning_rate']:g}   (full rate {full_lr:g})")
+        print(f"[pilot] flags: {log.report['flags'] or 'none'}")
+        print(f"[pilot] report -> {report_path}; timing rows -> {out_csv}")
+        return log.report
 
     # 1. rule 1, full fine-tuning
     epochs = p["epochs"]
@@ -217,23 +318,8 @@ def run_pilot(path, device: str | None = None, out_dir="results/revision", out_c
     _free(model)
 
     # 4. rule 1 for LoRA, 5. GA sanity check
-    lora_lr, model, lsplits, _, _ = _finetune_grid(log, lcfg, p["lora_lrs"], epochs, p["world_facts_tolerance"],
-                                                   "lora")
-    unlearn_lr = p["base_unlearn_lr"] * lora_lr / lr
-    log.report["selected"]["lora_finetune_lr"] = lora_lr
-    log.report["selected"]["lora_learning_rate"] = unlearn_lr
-    before = _loss(model, lsplits.forget, lcfg, dev)
-    set_seed(cfg.seed)
-    steps = unlearn.StepStats()
-    with log.phase("lora_ga_sanity"):
-        unlearn.apply_unlearning(model, lsplits, _with(lcfg, unlearn={"method": "gradient_ascent",
-                                                                      "learning_rate": unlearn_lr}), dev, steps)
-    after = _loss(model, lsplits.forget, lcfg, dev)
-    log.measure("lora_ga_sanity", learning_rate=unlearn_lr, forget_loss_before=before, forget_loss_after=after,
-                rises=after > before, steps=steps.summary())
-    if not after > before:
-        log.flag(f"LoRA GA at {unlearn_lr:g} does not raise the forget loss ({before:.4f} -> {after:.4f})")
-    _free(model)
+    log.report["lora_model"] = p["lora_model"]
+    _lora_rates(log, lcfg, p, lr)
 
     # 6. timing runs, alone in this process
     out_csv = Path(out_csv or out_dir / "pilot.csv")
@@ -243,21 +329,7 @@ def run_pilot(path, device: str | None = None, out_dir="results/revision", out_c
                  campaign.Unit(p["model"], p["seed"], "iid_K5", "federated",
                                {**overrides, "federated": {**overrides["federated"], "num_clients": 5,
                                                            "sharding": "iid"}})):
-        start = time.perf_counter()  # not a cost phase: run_unit times its own phases
-        rows = campaign.run_unit(path, unit, "pilot", device, out_dir)
-        log.report["phases"][f"timing_{unit.variant}"] = {"wall_s": time.perf_counter() - start}
-        print(f"[pilot] timing_{unit.variant}: {time.perf_counter() - start:.1f} s", flush=True)
-        campaign.write_rows(out_csv, rows, replace_keys=[unit.key])
-        r = rows[0]
-        times = {k[len("time_s_"):]: v for k, v in r.items() if k.startswith("time_s_") and v is not None}
-        print(f"[pilot] timing_{unit.variant} phases (s, first row): "
-              + "  ".join(f"{k}={v:.1f}" for k, v in times.items()), flush=True)
-        for row in rows:
-            if row["attack"] == "loss_threshold" and row["nonmember"] == "primary":
-                print(f"[pilot]   {row['method']}: " + "  ".join(
-                    f"{k[len('time_s_'):]}={row[k]:.1f}" for k in row
-                    if k.startswith("time_s_") and row[k] is not None and k[len("time_s_"):] not in
-                    ("base_scoring", "finetune", "fedavg", "pre_eval")), flush=True)
+        _time_unit(log, path, unit, device, out_dir, out_csv)
 
     report_path = out_dir / "pilot_calibration.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)

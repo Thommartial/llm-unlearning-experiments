@@ -4,6 +4,7 @@
     python scripts/run_revision.py --campaign central --check results/revision/central_gpu*.csv
     python scripts/run_revision.py --merge results/revision/central_gpu*.csv --out results/revision/central.csv
     python scripts/run_revision.py --campaign pilot
+    python scripts/run_revision.py --campaign pilot --only lora
     python scripts/run_revision.py --apply-calibration results/revision/pilot_calibration.json
     python scripts/run_revision.py --campaign central --memory-probe gpt2-medium
 
@@ -14,7 +15,9 @@ variant) units already complete in --out. --check judges success by the
 result files: it exits 1 and lists the missing units if any unit of the
 selected models and seeds lacks rows. --apply-calibration fills the values
 marked `# set from pilot` in configs/revision/*.yaml from the pilot's report
-and prints the diff and the pilot's flags (review both, then commit).
+and prints the diff and the pilot's flags (review both, then commit); a
+LoRA-only report (`--only lora`: pilot_lora_calibration.json) fills lora.yaml
+only.
 --memory-probe runs one step of each training phase of one model of the
 campaign (`memprobe`) and exits 1 if the reserved GPU memory peak exceeds
 --max-reserved-gib.
@@ -48,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--list", action="store_true", help="list the units and exit")
     ap.add_argument("--apply-calibration", metavar="JSON", help="fill the '# set from pilot' config values")
     ap.add_argument("--configs-dir", default="configs/revision", help="configs for --apply-calibration")
+    ap.add_argument("--only", choices=["lora"], help="pilot: run only the LoRA part (LoRA pilot)")
     ap.add_argument("--memory-probe", metavar="MODEL", help="one step of each training phase of MODEL, then exit")
     ap.add_argument("--max-reserved-gib", type=float, default=14.0, help="memory probe limit (GiB reserved)")
     args = ap.parse_args(argv)
@@ -68,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if not args.campaign:
         ap.error("--campaign is required")
+    if args.only and args.campaign != "pilot":
+        ap.error("--only goes with --campaign pilot")
     config = args.config or f"configs/revision/{CONFIGS.get(args.campaign, args.campaign + '.yaml')}"
     out = args.out or f"{args.out_dir}/{args.campaign}.csv"
 
@@ -83,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.campaign == "pilot":
         from unlearning.pilot import run_pilot
 
-        run_pilot(config, args.device, args.out_dir, out)
+        run_pilot(config, args.device, args.out_dir, args.out, args.only)
         return 0
     raw = campaign.read_campaign(config)
     unit_list = campaign.units(raw, args.models, args.seeds)

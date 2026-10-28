@@ -30,6 +30,8 @@ results/revision/*
 !results/revision/lora.csv
 !results/revision/pilot.csv
 !results/revision/pilot_calibration.json
+!results/revision/pilot_lora.csv
+!results/revision/pilot_lora_calibration.json
 models/
 checkpoints/
 *.ckpt

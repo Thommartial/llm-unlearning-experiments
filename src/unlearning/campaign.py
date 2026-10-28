@@ -244,6 +244,7 @@ CALIBRATION = {
     "lora_finetune_lr": [("lora.yaml", "unlearn.finetune_lr")],
     "lora_learning_rate": [("lora.yaml", "unlearn.learning_rate")],
 }
+LORA_CALIBRATION = ("lora_finetune_lr", "lora_learning_rate")  # what a LoRA-only report (`only: lora`) fills
 
 
 def _yaml_value(v) -> str:
@@ -258,7 +259,9 @@ def _yaml_value(v) -> str:
 
 def apply_calibration(report_path, configs_dir="configs/revision") -> str:
     """Fill the `# set from pilot` values of the campaign configs from the
-    pilot's `pilot_calibration.json`; returns the unified diff.
+    pilot's `pilot_calibration.json` (or, for a LoRA-only report with
+    `"only": "lora"`, lora.yaml's two values); returns the unified diff.
+    LoRA values measured on another model than lora.yaml's are refused.
 
     Only lines that carry the `# set from pilot` comment, under the right
     top-level section, are changed (value only; comments and layout stay).
@@ -269,13 +272,20 @@ def apply_calibration(report_path, configs_dir="configs/revision") -> str:
     import difflib
     import re
 
-    selected = json.loads(Path(report_path).read_text())["selected"]
-    missing_values = sorted(set(CALIBRATION) - set(selected))
+    report = json.loads(Path(report_path).read_text())
+    selected = report["selected"]
+    names = LORA_CALIBRATION if report.get("only") == "lora" else tuple(CALIBRATION)
+    missing_values = sorted(set(names) - set(selected))
     if missing_values:
         raise ValueError(f"{report_path} lacks {missing_values}")
+    measured = report.get("lora_model") or report.get("measurements", {}).get("lora_weight_load", {}).get("model")
+    lora_model = yaml.safe_load((Path(configs_dir) / "lora.yaml").read_text())["model"]["name"]
+    if measured is not None and measured != lora_model:
+        raise ValueError(f"{report_path}: the LoRA rates were measured on {measured}, but lora.yaml runs "
+                         f"{lora_model}; run the LoRA pilot (--campaign pilot --only lora) for it")
     edits: dict[str, dict[tuple[str, str], str]] = {}
-    for name, targets in CALIBRATION.items():
-        for file, dotted in targets:
+    for name in names:
+        for file, dotted in CALIBRATION[name]:
             edits.setdefault(file, {})[tuple(dotted.split("."))] = _yaml_value(selected[name])
     diff, writes = [], {}
     for file, keys in edits.items():

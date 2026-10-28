@@ -147,6 +147,14 @@ def test_memory_probe_runs_on_cpu(capsys):
     assert list(memprobe.run_probe("configs/revision/smoke_cpu.yaml", "tiny_llama", "cpu")) == ["finetune", "npo", "eval"]
 
 
+def test_memory_probe_runs_before_calibration(tmp_path):
+    raw = yaml.safe_load(Path("configs/revision/smoke_cpu.yaml").read_text())
+    raw["unlearn"].update(finetune_lr=None, learning_rate=None)  # as lora.yaml before the LoRA pilot
+    path = tmp_path / "blank.yaml"
+    path.write_text(yaml.safe_dump(raw))
+    assert list(memprobe.run_probe(path, "tiny_llama", "cpu")) == ["finetune", "npo", "eval"]
+
+
 def test_lora_diag_runs_on_cpu(tmp_path):
     diag = _diag()
     assert diag.main(["--config", "configs/revision/smoke_cpu.yaml", "--model", "tiny_llama", "--device", "cpu",
@@ -221,11 +229,11 @@ def test_diag_notebook_is_generated():
         for cell in code:
             ast.parse(cell)
         assert 'REPO_COMMIT = "SET_BY_KAGGLE_RUN"' in code[0] and Path(d["script"]).exists()
-    # every notebook sets the allocator before torch starts CUDA; 01 and 02 probe GPT-2-medium first
+    # every notebook sets the allocator before torch starts CUDA; 01 and 02 probe GPT-2-medium first, 04 Pythia-1B
     for name in [*gen.NOTEBOOKS, *gen.DIAGNOSTICS]:
         text = (Path("notebooks/revision") / name / f"{name}.ipynb").read_text()
         assert text.index("expandable_segments:True") < text.index("import torch")
-        assert ("--memory-probe" in text) == (name in ("01_central", "02_fed_iid"))
+        assert ("--memory-probe" in text) == (name in ("01_central", "02_fed_iid", "04_1b_lora"))
 
 
 def _cuda_supported() -> bool:

@@ -9,7 +9,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from unlearning import attacks, central, costs, data, unlearn, update_attacks
+from unlearning import attacks, central, costs, data, tofu_metrics, unlearn, update_attacks
 from unlearning.config import load_config
 from unlearning.seed import set_seed
 
@@ -213,3 +213,22 @@ def test_snapshot_under_lora_holds_adapters_only():
     assert all(torch.equal(model.state_dict()[k], v) for k, v in snap.items())
     with pytest.raises(RuntimeError):
         central._restore(model, {k: v for k, v in list(snap.items())[1:]})
+
+
+def test_left_padded_generation_on_gpt_neox_without_bos():
+    """As with Pythia's tokenizer (no BOS, EOS id 0, `<|padding|>` id 1):
+    generating a left-padded batch gives what each prompt gives alone."""
+    cfg = _cfg({"base_dtype": "float32"})
+    cfg.model.name = "tiny_neox"
+    model = _build(cfg)
+    rng = np.random.default_rng(0)
+    ids, labels = [], []
+    for n_prompt in (3, 9, 5, 7):
+        prompt = rng.integers(2, cfg.data.vocab_size, n_prompt).tolist()
+        answer = rng.integers(2, cfg.data.vocab_size, 4).tolist()
+        ids.append(torch.tensor(prompt + answer + [0]))
+        labels.append(torch.tensor([-100] * n_prompt + answer + [0]))
+    ds = data.QADataset(ids, labels, list(range(4)), [0] * 4, [""] * 4, [""] * 4, pad_token_id=1)
+    batched = tofu_metrics.generate(model, ds, 0, 6, 4, "cpu")
+    assert batched == tofu_metrics.generate(model, ds, 0, 6, 1, "cpu")
+    assert all(0 not in g and len(g) <= 6 for g in batched)  # cut at the first EOS (id 0)
